@@ -128,7 +128,7 @@ const listNFT = async (
                 tokenAddress,
             },
             accountAddress: owner.address,
-            startAmount: price,
+            startAmount: formatEther(price),
             expirationTime,
         });
 
@@ -190,8 +190,9 @@ const monitorCollection = async (c: Collection) => {
             return;
         };
 
-        // Subtract 1 wei from the lowest price
-        price = price - 1n;
+        // Subtract 1000 wei from the lowest price. Any lower than 1000 wei and OpenSea will
+        // complain about not getting its 250 basis points. 
+        price = price - 1000n;
         expirationTime = Number(bestListing.protocol_data.parameters.endTime);
 
         console.log(`Will set listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`);
