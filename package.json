@@ -1,0 +1,22 @@
+{
+    "name": "listoor",
+    "packageManager": "yarn@4.4.0",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "format:write": "prettier --write .",
+        "format:check": "prettier --check .",
+        "start": "tsc && node dist/index.js"
+    },
+    "dependencies": {
+        "dotenv": "^16.4.5",
+        "ethers": "^6.13.2",
+        "opensea-js": "^7.1.13"
+    },
+    "devDependencies": {
+        "@types/node": "^22.5.0",
+        "prettier": "^3.3.3",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.5.4"
+    }
+}
