@@ -146,15 +146,16 @@ const listNFT = async (
 const monitorCollection = async (c: Collection) => {
     const seaport = openSeaClients[c.chain];
 
-    const bestListing = await seaport.api
-        .getBestListing(c.collectionSlug, c.tokenId)
-        .catch((error: Error) => {
-            console.error(
-                `Error fetching best listing for token ID ${c.tokenId} for collection ${c.collectionSlug}:`,
-                error
-            );
-            return;
-        });
+    let bestListing: Listing;
+    try {
+        bestListing = await seaport.api.getBestListing(c.collectionSlug, c.tokenId);
+    } catch (error) {
+        console.error(
+            `Error fetching best listing for token ID ${c.tokenId} for collection ${c.collectionSlug}:\n`,
+            error
+        );
+        return;
+    }
 
     let price: bigint;
     let expirationTime: number;
