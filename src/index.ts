@@ -180,7 +180,9 @@ const monitorCollection = async (c: Collection) => {
             return;
         }
 
-        console.log(`Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(bestListing.price.current.value)} ETH`);
+        console.log(
+            `Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(bestListing.price.current.value)} ETH`
+        );
 
         price = BigInt(bestListing.price.current.value);
         if (price < c.minPrice) {
@@ -188,14 +190,16 @@ const monitorCollection = async (c: Collection) => {
                 `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is already below the min price. Skipping...`
             );
             return;
-        };
+        }
 
         // Subtract 1000 wei from the lowest price. Any lower than 1000 wei and OpenSea will
-        // complain about not getting its 250 basis points. 
+        // complain about not getting its 250 basis points.
         price = price - 1000n;
         expirationTime = Number(bestListing.protocol_data.parameters.endTime);
 
-        console.log(`Will set listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`);
+        console.log(
+            `Will set listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`
+        );
 
         await maybeDelayListing(bestListing);
     }
@@ -205,7 +209,7 @@ const monitorCollection = async (c: Collection) => {
 const maybeDelayListing = async (bestListing: Listing) => {
     if (LISTING_TIME_DELAY_SECONDS <= 0) {
         return;
-    };
+    }
 
     const listingTime = Number(bestListing.protocol_data.parameters.startTime);
     const delay = Math.min(LISTING_TIME_DELAY_SECONDS, Date.now() / 1000 - listingTime);
