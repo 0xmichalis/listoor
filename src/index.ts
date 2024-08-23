@@ -62,7 +62,8 @@ const initializeClients = async () => {
 
         // Cache providers and OpenSeaSDK instances
         providers[chain] = provider;
-        openSeaClients[chain] = new OpenSeaSDK(provider, {
+        const signer: Wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+        openSeaClients[chain] = new OpenSeaSDK(signer, {
             apiKey: OPENSEA_API_KEY,
             chain: getChainFromChainId(chainId),
         });
