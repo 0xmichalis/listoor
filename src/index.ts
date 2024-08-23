@@ -185,7 +185,9 @@ const monitorCollection = async (c: Collection) => {
             `Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(bestListing.price.current.value)} ETH`
         );
 
-        price = BigInt(bestListing.price.current.value);
+        price =
+            BigInt(bestListing.price.current.value) /
+            BigInt(bestListing.protocol_data.parameters.offer[0].endAmount);
         if (price < c.minPrice) {
             console.log(
                 `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is already below the min price. Skipping...`
