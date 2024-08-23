@@ -159,7 +159,7 @@ const monitorCollection = async (c: Collection) => {
         expirationTime = Math.floor(Date.now() / 1000) + 86400; // 24 hours from now
     } else {
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
-        if (lister === getAddress(owner.address)) {
+        if (lister === owner.address) {
             console.log(
                 `Already have the lowest listing for ${c.slug} (tokenId=${c.tokenId}). Skipping...`
             );
