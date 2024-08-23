@@ -1,0 +1,10 @@
+[
+    {
+        "chain": "ethereum",
+        "collectionSlug": "cryptopunks",
+        "tokenAddress": "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB",
+        "tokenId": 1,
+        "defaultPriceETH": 0.1,
+        "minPriceETH": 0.01
+    }
+]

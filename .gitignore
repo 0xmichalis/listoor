@@ -13,5 +13,7 @@
 .pnp.*
 
 .env
+data/collections.json
+
 dist/
 node_modules/

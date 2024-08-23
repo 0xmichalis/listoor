@@ -9,6 +9,7 @@ import {
     formatEther,
     getAddress,
 } from 'ethers';
+import fs from 'fs';
 import { OpenSeaSDK, Chain, Listing } from 'opensea-js';
 
 import { sleep } from './utils/sleep.js';
@@ -16,7 +17,7 @@ import { sleep } from './utils/sleep.js';
 dotenv.config();
 
 const RPC_ENDPOINTS = process.env.RPC_ENDPOINTS!.split(',');
-const COLLECTIONS = process.env.COLLECTIONS!.split(',');
+const COLLECTION_PATH = process.env.COLLECTION_PATH!;
 const LISTING_TIME_DELAY_SECONDS = parseInt(process.env.LISTING_TIME_DELAY_SECONDS || '0');
 const OPENSEA_API_KEY = process.env.OPENSEA_API_KEY!;
 const POLLING_INTERVAL_SECONDS = parseInt(process.env.POLLING_INTERVAL_SECONDS || '60');
@@ -28,7 +29,7 @@ const providers: Record<string, JsonRpcProvider> = {};
 const openSeaClients: Record<string, OpenSeaSDK> = {};
 type Collection = {
     chain: string;
-    slug: string;
+    collectionSlug: string;
     tokenAddress: string;
     tokenId: string;
     defaultPrice: BigInt;
@@ -71,37 +72,37 @@ const initializeClients = async () => {
 };
 
 const initializeCollections = () => {
-    for (const collection of COLLECTIONS) {
-        const [chain, slug, tokenAddress, tokenId, defaultPriceETH, minPriceETH] =
-            collection.split('::');
+    const parsedCollections = JSON.parse(fs.readFileSync(COLLECTION_PATH, 'utf-8'));
 
+    for (const c of parsedCollections) {
         // Validate against providers
-        if (!providers[chain]) {
+        if (!providers[c.chain]) {
             throw new Error(
-                `No RPC provider configured for chain ${chain} (needed by ${tokenAddress}:${tokenId}). Did you run initializeClients()?`
+                `No RPC provider configured for chain ${c.chain} (needed by ${c.tokenAddress}:${c.tokenId}). Did you run initializeClients()?`
             );
         }
 
         // Validate prices
-        const defaultPrice = parseEther(defaultPriceETH);
+        const defaultPrice = parseEther(c.defaultPriceETH);
         if (defaultPrice <= 0) {
             throw new Error(
-                `Invalid default price for collection ${tokenAddress}:${tokenId}: ${defaultPriceETH}`
+                `Invalid default price for collection ${c.tokenAddress}:${c.tokenId}: ${c.defaultPriceETH}`
             );
         }
-        const minPrice = parseEther(minPriceETH);
+        const minPrice = parseEther(c.minPriceETH);
         if (minPrice <= 0) {
             throw new Error(
-                `Invalid min price for collection ${tokenAddress}:${tokenId}: ${minPriceETH}`
+                `Invalid min price for collection ${c.tokenAddress}:${c.tokenId}: ${c.minPriceETH}`
             );
         }
         if (defaultPrice < minPrice) {
             throw new Error(
-                `Min price must be less than or equal to default price for collection ${tokenAddress}:${tokenId}`
+                `Min price must be less than or equal to default price for collection ${c.tokenAddress}:${c.tokenId}`
             );
         }
 
-        collections.push({ chain, slug, tokenAddress, tokenId, defaultPrice, minPrice });
+        console.log(`Tracking ${c.collectionSlug} (tokenId=${c.tokenId}) on ${c.chain} ...`);
+        collections.push(c);
     }
 };
 
@@ -141,10 +142,10 @@ const monitorCollection = async (c: Collection) => {
     const seaport = openSeaClients[c.chain];
 
     const bestListing = await seaport.api
-        .getBestListing(c.slug, c.tokenId)
+        .getBestListing(c.collectionSlug, c.tokenId)
         .catch((error: Error) => {
             console.error(
-                `Error fetching best listing for token ID ${c.tokenId} for collection ${c.slug}:`,
+                `Error fetching best listing for token ID ${c.tokenId} for collection ${c.collectionSlug}:`,
                 error
             );
             return;
@@ -161,7 +162,7 @@ const monitorCollection = async (c: Collection) => {
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
         if (lister === owner.address) {
             console.log(
-                `Already have the lowest listing for ${c.slug} (tokenId=${c.tokenId}). Skipping...`
+                `Already have the lowest listing for ${c.collectionSlug} (tokenId=${c.tokenId}). Skipping...`
             );
             return;
         }
@@ -169,7 +170,7 @@ const monitorCollection = async (c: Collection) => {
         if (bestListing.price.current.currency !== 'ETH') {
             // TODO: Handle this case by converting to the price of ETH
             console.error(
-                `Best listing for ${c.slug} (tokenId=${c.tokenId}) is not in ETH. Skipping...`
+                `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is not in ETH. Skipping...`
             );
             return;
         }
@@ -177,7 +178,7 @@ const monitorCollection = async (c: Collection) => {
         price = BigInt(bestListing.price.current.value);
         if (price < parseEther(c.minPrice.toString())) {
             console.log(
-                `Best listing for ${c.slug} (tokenId=${c.tokenId}) is already below the min price. Skipping...`
+                `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is already below the min price. Skipping...`
             );
             return;
         };
