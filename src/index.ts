@@ -162,7 +162,7 @@ const monitorCollection = async (c: Collection) => {
     if (!bestListing) {
         // If no best listing, create a new listing with the starting price
         price = c.defaultPrice;
-        expirationTime = Math.floor(Date.now() / 1000) + 604800; // on week from now
+        expirationTime = Math.floor(Date.now() / 1000) + 604800; // one week from now
     } else {
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
         if (lister === owner.address) {
