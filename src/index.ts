@@ -3,7 +3,6 @@ import {
     ethers,
     Network,
     JsonRpcProvider,
-    formatUnits,
     parseEther,
     Wallet,
     formatEther,
@@ -32,8 +31,10 @@ type Collection = {
     collectionSlug: string;
     tokenAddress: string;
     tokenId: string;
-    defaultPrice: BigInt;
-    minPrice: BigInt;
+    defaultPriceETH: string;
+    defaultPrice: bigint;
+    minPriceETH: string;
+    minPrice: bigint;
 };
 const collections: Collection[] = [];
 
@@ -74,7 +75,7 @@ const initializeClients = async () => {
 const initializeCollections = () => {
     const parsedCollections = JSON.parse(fs.readFileSync(COLLECTION_PATH, 'utf-8'));
 
-    for (const c of parsedCollections) {
+    for (let c of parsedCollections) {
         // Validate against providers
         if (!providers[c.chain]) {
             throw new Error(
@@ -89,12 +90,16 @@ const initializeCollections = () => {
                 `Invalid default price for collection ${c.tokenAddress}:${c.tokenId}: ${c.defaultPriceETH}`
             );
         }
+        c.defaultPrice = defaultPrice;
+
         const minPrice = parseEther(c.minPriceETH);
         if (minPrice <= 0) {
             throw new Error(
                 `Invalid min price for collection ${c.tokenAddress}:${c.tokenId}: ${c.minPriceETH}`
             );
         }
+        c.minPrice = minPrice;
+
         if (defaultPrice < minPrice) {
             throw new Error(
                 `Min price must be less than or equal to default price for collection ${c.tokenAddress}:${c.tokenId}`
@@ -110,11 +115,11 @@ const listNFT = async (
     seaport: OpenSeaSDK,
     tokenAddress: string,
     tokenId: string,
-    price: BigInt,
+    price: bigint,
     expirationTime: number
 ) => {
     console.log(
-        `Listing NFT ${tokenId} from tokenAddress ${tokenAddress} at price ${formatEther(price.toString())} ETH`
+        `Listing NFT ${tokenId} from tokenAddress ${tokenAddress} at price ${formatEther(price)} ETH`
     );
     try {
         const tx = await seaport.createListing({
@@ -123,12 +128,12 @@ const listNFT = async (
                 tokenAddress,
             },
             accountAddress: owner.address,
-            startAmount: formatUnits(price.toString(), 'wei'),
+            startAmount: price,
             expirationTime,
         });
 
         console.log(
-            `Successfully listed NFT ${tokenId} from tokenAddress ${tokenAddress} at price ${formatEther(price.toString())} ETH`
+            `Successfully listed NFT ${tokenId} from tokenAddress ${tokenAddress} at price ${formatEther(price)} ETH`
         );
         return tx;
     } catch (error) {
@@ -156,8 +161,8 @@ const monitorCollection = async (c: Collection) => {
 
     if (!bestListing) {
         // If no best listing, create a new listing with the starting price
-        price = parseEther(c.defaultPrice.toString());
-        expirationTime = Math.floor(Date.now() / 1000) + 86400; // 24 hours from now
+        price = c.defaultPrice;
+        expirationTime = Math.floor(Date.now() / 1000) + 604800; // on week from now
     } else {
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
         if (lister === owner.address) {
@@ -175,8 +180,10 @@ const monitorCollection = async (c: Collection) => {
             return;
         }
 
+        console.log(`Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(bestListing.price.current.value)} ETH`);
+
         price = BigInt(bestListing.price.current.value);
-        if (price < parseEther(c.minPrice.toString())) {
+        if (price < c.minPrice) {
             console.log(
                 `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is already below the min price. Skipping...`
             );
@@ -186,6 +193,8 @@ const monitorCollection = async (c: Collection) => {
         // Subtract 1 wei from the lowest price
         price = price - 1n;
         expirationTime = Number(bestListing.protocol_data.parameters.endTime);
+
+        console.log(`Will set listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`);
 
         await maybeDelayListing(bestListing);
     }
