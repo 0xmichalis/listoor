@@ -46,6 +46,8 @@ const getChainFromChainId = (chainId: number): Chain => {
             return Chain.Base;
         case 42161:
             return Chain.Arbitrum;
+        case 7777777:
+            return Chain.Zora;
         default:
             throw new Error(`Unsupported chain ID: ${chainId}`);
     }
