@@ -218,7 +218,9 @@ const maybeDelayListing = async (bestListing: Listing) => {
     const delay = Math.min(LISTING_TIME_DELAY_SECONDS, Date.now() / 1000 - listingTime);
 
     const offer = bestListing.protocol_data.parameters.offer[0];
-    console.log(`Waiting ${delay} seconds before listing ${offer.token}:${offer.itemType}...`);
+    console.log(
+        `Waiting ${delay} seconds before listing ${offer.token}:${offer.identifierOrCriteria}...`
+    );
     await sleep(delay);
 };
 
