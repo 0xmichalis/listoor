@@ -17,7 +17,6 @@ dotenv.config();
 
 const RPC_ENDPOINTS = process.env.RPC_ENDPOINTS!.split(',');
 const COLLECTION_PATH = process.env.COLLECTION_PATH!;
-const LISTING_TIME_DELAY_SECONDS = parseInt(process.env.LISTING_TIME_DELAY_SECONDS || '0');
 const OPENSEA_API_KEY = process.env.OPENSEA_API_KEY!;
 const POLLING_INTERVAL_SECONDS = parseInt(process.env.POLLING_INTERVAL_SECONDS || '60');
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
@@ -122,9 +121,6 @@ const listNFT = async (
     price: bigint,
     expirationTime: number
 ) => {
-    console.log(
-        `Listing NFT ${tokenId} from tokenAddress ${tokenAddress} at price ${formatEther(price)} ETH`
-    );
     try {
         const tx = await seaport.createListing({
             asset: {
@@ -136,12 +132,10 @@ const listNFT = async (
             expirationTime,
         });
 
-        console.log(
-            `Successfully listed NFT ${tokenId} from tokenAddress ${tokenAddress} at price ${formatEther(price)} ETH`
-        );
+        console.log(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
         return tx;
     } catch (error) {
-        console.error(`Error listing NFT ${tokenId} from tokenAddress ${tokenAddress}:\n`, error);
+        console.error(`Failed to list ${tokenAddress}:${tokenId}:\n`, error);
         return null;
     }
 };
@@ -155,7 +149,7 @@ const monitorCollection = async (c: Collection) => {
         bestListing = await seaport.api.getBestListing(c.collectionSlug, c.tokenId);
     } catch (error) {
         console.error(
-            `Error fetching best listing for token ID ${c.tokenId} for collection ${c.collectionSlug}:\n`,
+            `Error fetching best listing for ${c.collectionSlug} (tokenId=${c.tokenId}):\n`,
             error
         );
         return;
@@ -203,29 +197,11 @@ const monitorCollection = async (c: Collection) => {
         // complain about not getting its 250 basis points.
         price = price - 1000n;
         expirationTime = Number(bestListing.protocol_data.parameters.endTime);
-
-        console.log(
-            `Will set listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`
-        );
-
-        await maybeDelayListing(bestListing);
     }
-    await listNFT(seaport, c.tokenAddress, c.tokenId, price, expirationTime);
-};
-
-const maybeDelayListing = async (bestListing: Listing) => {
-    if (LISTING_TIME_DELAY_SECONDS <= 0) {
-        return;
-    }
-
-    const listingTime = Number(bestListing.protocol_data.parameters.startTime);
-    const delay = Math.min(LISTING_TIME_DELAY_SECONDS, Date.now() / 1000 - listingTime);
-
-    const offer = bestListing.protocol_data.parameters.offer[0];
     console.log(
-        `Waiting ${delay} seconds before listing ${offer.token}:${offer.identifierOrCriteria}...`
+        `Listing ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH ...`
     );
-    await sleep(delay);
+    await listNFT(seaport, c.tokenAddress, c.tokenId, price, expirationTime);
 };
 
 // Main function to run the bot
