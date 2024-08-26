@@ -195,7 +195,8 @@ const monitorCollection = async (c: Collection) => {
 
         // Subtract 1000 wei from the lowest price. Any lower than 1000 wei and OpenSea will
         // complain about not getting its 250 basis points.
-        price = price - 1000n;
+        const newPrice = price - 1000n;
+        price = newPrice < c.defaultPrice ? newPrice : c.defaultPrice;
         expirationTime = Number(bestListing.protocol_data.parameters.endTime);
     }
     console.log(
