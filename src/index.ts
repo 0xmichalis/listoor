@@ -160,7 +160,7 @@ const monitorCollection = async (c: Collection) => {
     let price: bigint;
     let expirationTime: number;
 
-    if (!bestListing) {
+    if (!bestListing || !bestListing.protocol_data || !bestListing.protocol_data.parameters) {
         // If no best listing, create a new listing with the starting price
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + 604800; // one week from now
