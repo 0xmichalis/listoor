@@ -142,6 +142,8 @@ const listNFT = async (
 
 // Function to monitor a specific NFT collection
 const monitorCollection = async (c: Collection) => {
+    console.log(`Checking ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
+
     const seaport = openSeaClients[c.chain];
 
     let bestListing: Listing;
