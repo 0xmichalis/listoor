@@ -183,7 +183,6 @@ const monitorCollection = async (c: Collection) => {
             // Try to find the listing by fetching all listings
             // This can be optimized by caching responses
             bestListing = await getListingForTokenId(seaport, c.collectionSlug, c.tokenId);
-            console.log(bestListing);
         }
     }
 
