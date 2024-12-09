@@ -140,21 +140,51 @@ const listNFT = async (
     }
 };
 
+const multiAssetErrRegex = /Multiple assets with the token_id/;
+
+const isMultiAssetError = (error: unknown): boolean =>
+    error instanceof Error && !!error.message.match(multiAssetErrRegex);
+
+const getListingForTokenId = async (
+    seaport: OpenSeaSDK,
+    collectionSlug: string,
+    tokenId: string,
+    next?: string
+): Promise<Listing | undefined> => {
+    const listingsResp = await seaport.api.getAllListings(collectionSlug, 100, next);
+    const listing = listingsResp.listings.find((l) =>
+        l.protocol_data.parameters.offer.some((o) => o.identifierOrCriteria == tokenId)
+    );
+    if (!listing && listingsResp.next) {
+        return await getListingForTokenId(seaport, collectionSlug, tokenId, listingsResp.next);
+    }
+    return listing;
+};
+
 // Function to monitor a specific NFT collection
 const monitorCollection = async (c: Collection) => {
     console.log(`Checking ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
 
     const seaport = openSeaClients[c.chain];
 
-    let bestListing: Listing;
+    let bestListing: Listing | undefined;
     try {
         bestListing = await seaport.api.getBestListing(c.collectionSlug, c.tokenId);
     } catch (error) {
-        console.error(
-            `Error fetching best listing for ${c.collectionSlug} (tokenId=${c.tokenId}):\n`,
-            error
-        );
-        return;
+        const isMultiAssetErr = isMultiAssetError(error);
+        if (!isMultiAssetErr) {
+            console.error(
+                `Error fetching best listing for ${c.collectionSlug} (tokenId=${c.tokenId}):\n`,
+                error
+            );
+            return;
+        }
+        if (isMultiAssetErr) {
+            // Try to find the listing by fetching all listings
+            // This can be optimized by caching responses
+            bestListing = await getListingForTokenId(seaport, c.collectionSlug, c.tokenId);
+            console.log(bestListing);
+        }
     }
 
     let price: bigint;
@@ -216,6 +246,7 @@ const main = async () => {
         for (const collection of collections) {
             await monitorCollection(collection);
         }
+        console.log('Waiting for next poll ...');
         await sleep(POLLING_INTERVAL_SECONDS);
     }
 };
