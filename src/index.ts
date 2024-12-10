@@ -246,7 +246,11 @@ const main = async () => {
 
     while (true) {
         for (const collection of collections) {
-            await monitorCollection(collection);
+            try {
+                await monitorCollection(collection);
+            } catch (err) {
+                console.error(`Error monitoring collection ${collection.collectionSlug}:`, err);
+            }
         }
         console.log('Waiting for next poll ...');
         await sleep(POLLING_INTERVAL_SECONDS);
