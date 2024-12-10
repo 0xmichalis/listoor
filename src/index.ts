@@ -15,6 +15,8 @@ import { sleep } from './utils/sleep.js';
 
 dotenv.config();
 
+const DEFAULT_EXPIRATION_TIME = 29 * 24 * 60 * 60; // 29 days
+
 const RPC_ENDPOINTS = process.env.RPC_ENDPOINTS!.split(',');
 const COLLECTION_PATH = process.env.COLLECTION_PATH!;
 const OPENSEA_API_KEY = process.env.OPENSEA_API_KEY!;
@@ -192,7 +194,7 @@ const monitorCollection = async (c: Collection) => {
     if (!bestListing || !bestListing.protocol_data || !bestListing.protocol_data.parameters) {
         // If no best listing, create a new listing with the starting price
         price = c.defaultPrice;
-        expirationTime = Math.floor(Date.now() / 1000) + 604800; // one week from now
+        expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
         if (lister === owner.address) {
