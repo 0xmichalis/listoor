@@ -149,20 +149,42 @@ const multiAssetErrRegex = /Multiple assets with the token_id/;
 const isMultiAssetError = (error: unknown): boolean =>
     error instanceof Error && !!error.message.match(multiAssetErrRegex);
 
-const getListingForTokenId = async (
+const getBestListing = async (
     seaport: OpenSeaSDK,
     collectionSlug: string,
-    tokenId: string,
+    tokenId?: string,
     next?: string
 ): Promise<Listing | undefined> => {
     const listingsResp = await seaport.api.getAllListings(collectionSlug, 100, next);
-    const listing = listingsResp.listings.find((l) =>
-        l.protocol_data.parameters.offer.some((o) => o.identifierOrCriteria == tokenId)
-    );
-    if (!listing && listingsResp.next) {
-        return await getListingForTokenId(seaport, collectionSlug, tokenId, listingsResp.next);
+    let listing: Listing | undefined;
+
+    if (tokenId) {
+        listing = listingsResp.listings.find((l) =>
+            l.protocol_data.parameters.offer.some((o) => o.identifierOrCriteria == tokenId)
+        );
+    } else {
+        // get the listing with the lowest price
+        const validListings = listingsResp.listings.filter(
+            (l) => l?.price?.current?.value && l?.price?.current?.value !== '0'
+        );
+        listing = validListings.reduce((prev, curr) => {
+            if (!prev) return curr;
+            const prevPrice = BigInt(prev.price.current.value);
+            const currPrice = BigInt(curr.price.current.value);
+            return prevPrice < currPrice ? prev : curr;
+        }, validListings[0]);
     }
-    return listing;
+
+    const canReturnUnique = tokenId && listing;
+    if (canReturnUnique) return listing;
+
+    let nextListing: Listing | undefined;
+    if (listingsResp.next)
+        nextListing = await getBestListing(seaport, collectionSlug, tokenId, listingsResp.next);
+
+    if (!tokenId) return listing && nextListing && listing < nextListing ? listing : nextListing;
+
+    return nextListing;
 };
 
 // Function to monitor a specific NFT collection
@@ -186,7 +208,7 @@ const monitorCollection = async (c: Collection) => {
         if (isMultiAssetErr) {
             // Try to find the listing by fetching all listings
             // This can be optimized by caching responses
-            bestListing = await getListingForTokenId(seaport, c.collectionSlug, c.tokenId);
+            bestListing = await getBestListing(seaport, c.collectionSlug, c.tokenId);
         }
     }
 
