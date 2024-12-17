@@ -36,6 +36,7 @@ type Collection = {
     defaultPrice: bigint;
     minPriceETH: string;
     minPrice: bigint;
+    shouldCompareToRest: boolean;
 };
 const collections: Collection[] = [];
 
@@ -113,6 +114,8 @@ const initializeCollections = () => {
             );
         }
 
+        c.shouldCompareToRest = c.shouldCompareToRest || false;
+
         console.log(`Tracking ${c.collectionSlug} (tokenId=${c.tokenId}) on ${c.chain} ...`);
         collections.push(c);
     }
@@ -163,7 +166,6 @@ const getBestListing = async (
             l.protocol_data.parameters.offer.some((o) => o.identifierOrCriteria == tokenId)
         );
     } else {
-        // get the listing with the lowest price
         const validListings = listingsResp.listings.filter(
             (l) => l?.price?.current?.value && l?.price?.current?.value !== '0'
         );
@@ -182,25 +184,34 @@ const getBestListing = async (
     if (listingsResp.next)
         nextListing = await getBestListing(seaport, collectionSlug, tokenId, listingsResp.next);
 
-    if (!tokenId) return listing && nextListing && listing < nextListing ? listing : nextListing;
+    if (!tokenId) {
+        if (
+            !listing ||
+            (nextListing &&
+                BigInt(nextListing.price.current.value) < BigInt(listing.price.current.value))
+        ) {
+            return nextListing;
+        }
+        return listing;
+    }
 
     return nextListing;
 };
 
-// Function to monitor a specific NFT collection
-const monitorCollection = async (c: Collection) => {
-    console.log(`Checking ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
-
-    const seaport = openSeaClients[c.chain];
-
+const getSingleBestListing = async (
+    seaport: OpenSeaSDK,
+    collectionSlug: string,
+    tokenId: string
+): Promise<Listing | undefined> => {
     let bestListing: Listing | undefined;
+
     try {
-        bestListing = await seaport.api.getBestListing(c.collectionSlug, c.tokenId);
+        bestListing = await seaport.api.getBestListing(collectionSlug, tokenId);
     } catch (error) {
         const isMultiAssetErr = isMultiAssetError(error);
         if (!isMultiAssetErr) {
             console.error(
-                `Error fetching best listing for ${c.collectionSlug} (tokenId=${c.tokenId}):\n`,
+                `Error fetching best listing for ${collectionSlug} (tokenId=${tokenId}):\n`,
                 error
             );
             return;
@@ -208,18 +219,33 @@ const monitorCollection = async (c: Collection) => {
         if (isMultiAssetErr) {
             // Try to find the listing by fetching all listings
             // This can be optimized by caching responses
-            bestListing = await getBestListing(seaport, c.collectionSlug, c.tokenId);
+            bestListing = await getBestListing(seaport, collectionSlug, tokenId);
         }
     }
+
+    return bestListing;
+};
+
+// Function to monitor a specific NFT collection
+const monitorCollection = async (c: Collection) => {
+    console.log(`Checking ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
+
+    const seaport = openSeaClients[c.chain];
+    const bestListing = c.shouldCompareToRest
+        ? await getBestListing(seaport, c.collectionSlug)
+        : await getSingleBestListing(seaport, c.collectionSlug, c.tokenId);
 
     let price: bigint;
     let expirationTime: number;
 
     if (!bestListing || !bestListing.protocol_data || !bestListing.protocol_data.parameters) {
+        console.log(`Did not find a listing for ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
         // If no best listing, create a new listing with the starting price
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
+        // TODO: Need to also compare token ids as if we have more than one token ids to be listed
+        // in the collection then only one will get listed and the rest will be ignored.
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
         if (lister === owner.address) {
             console.log(
