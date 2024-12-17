@@ -137,6 +137,7 @@ const listNFT = async (
             accountAddress: owner.address,
             startAmount: formatEther(price),
             expirationTime,
+            excludeOptionalCreatorFees: true,
         });
 
         console.log(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
