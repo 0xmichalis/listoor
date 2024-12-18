@@ -211,17 +211,11 @@ const getSingleBestListing = async (
     } catch (error) {
         const isMultiAssetErr = isMultiAssetError(error);
         if (!isMultiAssetErr) {
-            console.error(
-                `Error fetching best listing for ${collectionSlug} (tokenId=${tokenId}):\n`,
-                error
-            );
-            return;
+            throw error;
         }
-        if (isMultiAssetErr) {
-            // Try to find the listing by fetching all listings
-            // This can be optimized by caching responses
-            bestListing = await getBestListing(seaport, collectionSlug, tokenId);
-        }
+        // Try to find the listing by fetching all listings
+        // This can be optimized by caching responses
+        bestListing = await getBestListing(seaport, collectionSlug, tokenId);
     }
 
     return bestListing;
