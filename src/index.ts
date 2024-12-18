@@ -9,7 +9,7 @@ import {
     getAddress,
 } from 'ethers';
 import fs from 'fs';
-import { OpenSeaSDK, Chain, Listing } from 'opensea-js';
+import { OpenSeaSDK, Chain, Listing, OrderV2 } from 'opensea-js';
 
 import { sleep } from './utils/sleep.js';
 
@@ -127,25 +127,20 @@ const listNFT = async (
     tokenId: string,
     price: bigint,
     expirationTime: number
-) => {
-    try {
-        const tx = await seaport.createListing({
-            asset: {
-                tokenId,
-                tokenAddress,
-            },
-            accountAddress: owner.address,
-            startAmount: formatEther(price),
-            expirationTime,
-            excludeOptionalCreatorFees: true,
-        });
+): Promise<OrderV2> => {
+    const tx = await seaport.createListing({
+        asset: {
+            tokenId,
+            tokenAddress,
+        },
+        accountAddress: owner.address,
+        startAmount: formatEther(price),
+        expirationTime,
+        excludeOptionalCreatorFees: true,
+    });
 
-        console.log(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
-        return tx;
-    } catch (error) {
-        console.error(`Failed to list ${tokenAddress}:${tokenId}:\n`, error);
-        return null;
-    }
+    console.log(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
+    return tx;
 };
 
 const multiAssetErrRegex = /Multiple assets with the token_id/;
