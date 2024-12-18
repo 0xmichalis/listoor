@@ -15,7 +15,7 @@ import { sleep } from './utils/sleep.js';
 
 dotenv.config();
 
-const DEFAULT_EXPIRATION_TIME = 29 * 24 * 60 * 60; // 29 days
+const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
 
 const RPC_ENDPOINTS = process.env.RPC_ENDPOINTS!.split(',');
 const COLLECTION_PATH = process.env.COLLECTION_PATH!;
