@@ -247,7 +247,7 @@ const monitorCollection = async (c: Collection) => {
         // TODO: Need to also compare token ids as if we have more than one token ids to be listed
         // in the collection then only one will get listed and the rest will be ignored.
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
-        if (lister === owner.address) {
+        if (lister.toLowerCase() === owner.address.toLowerCase()) {
             console.log(
                 `Already have the lowest listing for ${c.collectionSlug} (tokenId=${c.tokenId}). Skipping...`
             );
