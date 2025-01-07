@@ -68,20 +68,23 @@ const getChainFromChainId = (chainId: number): Chain => {
 const initializeClients = async () => {
     for (const rpcEndpoint of RPC_ENDPOINTS) {
         const [chain, url] = rpcEndpoint.split('::');
+
+        console.log(`Initializing clients for chain ${chain} ...`);
         const provider = new JsonRpcProvider(url, undefined, {
             staticNetwork: true,
         });
 
+        console.log(`Fetching chain ID for ${chain} ...`);
         const chainId = await provider
             .getNetwork()
             .then((network: Network) => Number(network.chainId));
-
-        console.log(`Initializing clients for chain ${chain} (${chainId}) ...`);
+        console.log(`Chain ID for ${chain}: ${chainId}`);
 
         // Cache providers and OpenSeaSDK instances
         providers[chain] = provider;
         const signer: Wallet = new ethers.Wallet(PRIVATE_KEY, provider);
         console.log(`${chain} RPC provider initialized.`);
+
         openSeaClients[chain] = new OpenSeaSDK(signer, {
             apiKey: OPENSEA_API_KEY,
             chain: getChainFromChainId(chainId),
