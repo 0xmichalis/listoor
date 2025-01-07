@@ -15,6 +15,14 @@ import { sleep } from './utils/sleep.js';
 
 dotenv.config();
 
+(function() {
+    const originalLog = console.log;
+    console.log = (...args: any[]) => {
+      const timestamp = new Date().toISOString();
+      originalLog(`[${timestamp}]`, ...args);
+    };
+})();
+
 const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
 
 const RPC_ENDPOINTS = process.env.RPC_ENDPOINTS!.split(',');
