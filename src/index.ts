@@ -15,11 +15,11 @@ import { sleep } from './utils/sleep.js';
 
 dotenv.config();
 
-(function() {
+(function () {
     const originalLog = console.log;
     console.log = (...args: any[]) => {
-      const timestamp = new Date().toISOString();
-      originalLog(`[${timestamp}]`, ...args);
+        const timestamp = new Date().toISOString();
+        originalLog(`[${timestamp}]`, ...args);
     };
 })();
 
@@ -247,16 +247,6 @@ const monitorCollection = async (c: Collection) => {
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
-        // TODO: Need to also compare token ids as if we have more than one token ids to be listed
-        // in the collection then only one will get listed and the rest will be ignored.
-        const lister = getAddress(bestListing.protocol_data.parameters.offerer);
-        if (lister.toLowerCase() === owner.address.toLowerCase()) {
-            console.log(
-                `Already have the lowest listing for ${c.collectionSlug} (tokenId=${c.tokenId}). Skipping...`
-            );
-            return;
-        }
-
         if (bestListing.price.current.currency !== 'ETH') {
             // TODO: Handle this case by converting to the price of ETH
             console.error(
@@ -268,6 +258,16 @@ const monitorCollection = async (c: Collection) => {
         price =
             BigInt(bestListing.price.current.value) /
             BigInt(bestListing.protocol_data.parameters.offer[0].endAmount);
+
+        // TODO: Need to also compare token ids as if we have more than one token ids to be listed
+        // in the collection then only one will get listed and the rest will be ignored.
+        const lister = getAddress(bestListing.protocol_data.parameters.offerer);
+        if (lister.toLowerCase() === owner.address.toLowerCase()) {
+            console.log(
+                `Already have the lowest listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at price ${formatEther(price)} ETH. Skipping...`
+            );
+            return;
+        }
 
         console.log(
             `Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`
