@@ -165,18 +165,32 @@ const getBestListing = async (
     seaport: OpenSeaSDK,
     collectionSlug: string,
     tokenId?: string,
-    next?: string
+    next?: string,
+    offerer?: string
 ): Promise<Listing | undefined> => {
     const listingsResp = await seaport.api.getAllListings(collectionSlug, 100, next);
     let listing: Listing | undefined;
 
     if (tokenId) {
-        listing = listingsResp.listings.find((l) =>
-            l.protocol_data.parameters.offer.some((o) => o.identifierOrCriteria == tokenId)
-        );
+        listing = listingsResp.listings.find((l) => {
+            const matchesToken = l.protocol_data.parameters.offer.some(
+                (o) => o.identifierOrCriteria == tokenId
+            );
+            const matchesOfferer = offerer
+                ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() ===
+                  offerer.toLowerCase()
+                : true;
+            return matchesToken && matchesOfferer;
+        });
     } else {
         const validListings = listingsResp.listings.filter(
-            (l) => l?.price?.current?.value && l?.price?.current?.value !== '0'
+            (l) =>
+                l?.price?.current?.value &&
+                l?.price?.current?.value !== '0' &&
+                (offerer
+                    ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() ===
+                      offerer.toLowerCase()
+                    : true)
         );
         listing = validListings.reduce((prev, curr) => {
             if (!prev) return curr;
@@ -191,7 +205,13 @@ const getBestListing = async (
 
     let nextListing: Listing | undefined;
     if (listingsResp.next)
-        nextListing = await getBestListing(seaport, collectionSlug, tokenId, listingsResp.next);
+        nextListing = await getBestListing(
+            seaport,
+            collectionSlug,
+            tokenId,
+            listingsResp.next,
+            offerer
+        );
 
     if (!tokenId) {
         if (
@@ -273,18 +293,36 @@ const monitorCollection = async (c: Collection) => {
             `Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`
         );
 
-        if (price < c.minPrice) {
-            console.log(
-                `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is already below the min price. Skipping...`
+        if (price >= c.minPrice) {
+            // Subtract 1000 wei from the lowest price. Any lower than 1000 wei and OpenSea will
+            // complain about not getting its 250 basis points.
+            const newPrice = (price / 1000n) * 1000n - 1000n;
+            price = newPrice < c.defaultPrice ? newPrice : c.defaultPrice;
+            expirationTime = Number(bestListing.protocol_data.parameters.endTime);
+        } else {
+            // Use getBestListing with offerer to check if our NFT is listed at min price
+            const ourListing = await getBestListing(
+                seaport,
+                c.collectionSlug,
+                c.tokenId,
+                undefined,
+                owner.address
             );
-            return;
+            if (
+                ourListing &&
+                ourListing.price.current.currency === 'ETH' &&
+                BigInt(ourListing.price.current.value) /
+                    BigInt(ourListing.protocol_data.parameters.offer[0].endAmount) ===
+                    c.minPrice
+            ) {
+                console.log(
+                    `Our NFT is already listed at min price for ${c.collectionSlug} (tokenId=${c.tokenId}). Skipping...`
+                );
+                return;
+            }
+            price = c.minPrice;
+            expirationTime = Math.floor(Date.now() / 1000) + 12 * 60 * 60; // 12 hours
         }
-
-        // Subtract 1000 wei from the lowest price. Any lower than 1000 wei and OpenSea will
-        // complain about not getting its 250 basis points.
-        const newPrice = (price / 1000n) * 1000n - 1000n;
-        price = newPrice < c.defaultPrice ? newPrice : c.defaultPrice;
-        expirationTime = Number(bestListing.protocol_data.parameters.endTime);
     }
     console.log(
         `Listing ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH ...`
