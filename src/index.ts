@@ -165,66 +165,55 @@ const getBestListing = async (
     seaport: OpenSeaSDK,
     collectionSlug: string,
     tokenId?: string,
-    next?: string,
-    offerer?: string
+    offerer?: string,
+    next?: string
 ): Promise<Listing | undefined> => {
     const listingsResp = await seaport.api.getAllListings(collectionSlug, 100, next);
-    let listing: Listing | undefined;
 
-    if (tokenId) {
-        listing = listingsResp.listings.find((l) => {
-            const matchesToken = l.protocol_data.parameters.offer.some(
-                (o) => o.identifierOrCriteria == tokenId
-            );
-            const matchesOfferer = offerer
-                ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() ===
-                  offerer.toLowerCase()
-                : true;
-            return matchesToken && matchesOfferer;
-        });
-    } else {
-        const validListings = listingsResp.listings.filter(
-            (l) =>
-                l?.price?.current?.value &&
-                l?.price?.current?.value !== '0' &&
-                (offerer
-                    ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() ===
-                      offerer.toLowerCase()
-                    : true)
+    // Get all listings matching our criteria
+    const filteredListings = listingsResp.listings.filter((l) => {
+        const matchesToken = tokenId
+            ? l.protocol_data.parameters.offer.some((o) => o.identifierOrCriteria == tokenId)
+            : true;
+        const matchesOfferer = offerer
+            ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() === offerer.toLowerCase()
+            : true;
+        return (
+            l?.price?.current?.value &&
+            l?.price?.current?.value !== '0' &&
+            matchesToken &&
+            matchesOfferer
         );
-        listing = validListings.reduce((prev, curr) => {
-            if (!prev) return curr;
-            const prevPrice = BigInt(prev.price.current.value);
-            const currPrice = BigInt(curr.price.current.value);
-            return prevPrice < currPrice ? prev : curr;
-        }, validListings[0]);
-    }
+    });
 
-    const canReturnUnique = tokenId && listing;
-    if (canReturnUnique) return listing;
+    // Pick the cheapest
+    filteredListings.sort((a, b) => {
+        const priceA = BigInt(a.price.current.value) / sumOfferEndAmounts(a);
+        const priceB = BigInt(b.price.current.value) / sumOfferEndAmounts(b);
+        return priceA < priceB ? -1 : priceA > priceB ? 1 : 0;
+    });
+    let listing = filteredListings[0];
 
+    // If there are more pages, recursively check and compare
     let nextListing: Listing | undefined;
-    if (listingsResp.next)
+    if (listingsResp.next) {
         nextListing = await getBestListing(
             seaport,
             collectionSlug,
             tokenId,
-            listingsResp.next,
-            offerer
+            offerer,
+            listingsResp.next
         );
-
-    if (!tokenId) {
         if (
             !listing ||
             (nextListing &&
-                BigInt(nextListing.price.current.value) < BigInt(listing.price.current.value))
+                BigInt(nextListing.price.current.value) / sumOfferEndAmounts(nextListing) <
+                    BigInt(listing.price.current.value) / sumOfferEndAmounts(listing))
         ) {
             return nextListing;
         }
-        return listing;
     }
-
-    return nextListing;
+    return listing;
 };
 
 const getSingleBestListing = async (
@@ -275,9 +264,7 @@ const monitorCollection = async (c: Collection) => {
             return;
         }
 
-        price =
-            BigInt(bestListing.price.current.value) /
-            BigInt(bestListing.protocol_data.parameters.offer[0].endAmount);
+        price = BigInt(bestListing.price.current.value) / sumOfferEndAmounts(bestListing);
 
         // TODO: Need to also compare token ids as if we have more than one token ids to be listed
         // in the collection then only one will get listed and the rest will be ignored.
@@ -305,14 +292,12 @@ const monitorCollection = async (c: Collection) => {
                 seaport,
                 c.collectionSlug,
                 c.tokenId,
-                undefined,
                 owner.address
             );
             if (
                 ourListing &&
                 ourListing.price.current.currency === 'ETH' &&
-                BigInt(ourListing.price.current.value) /
-                    BigInt(ourListing.protocol_data.parameters.offer[0].endAmount) ===
+                BigInt(ourListing.price.current.value) / sumOfferEndAmounts(ourListing) ===
                     c.minPrice
             ) {
                 console.log(
@@ -347,5 +332,11 @@ const main = async () => {
         await sleep(POLLING_INTERVAL_SECONDS);
     }
 };
+
+function sumOfferEndAmounts(listing: Listing): bigint {
+    return listing.protocol_data.parameters.offer.reduce((sum: bigint, offer: any) => {
+        return sum + BigInt(offer.endAmount);
+    }, 0n);
+}
 
 main().catch(console.error);
