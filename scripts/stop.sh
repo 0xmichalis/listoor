@@ -1,3 +1,3 @@
 #!/bin/sh
 
-podman-compose down
+podman-compose -p listoor-pod down

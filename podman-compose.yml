@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   listoor:
-    image: listoor:latest
+    image: localhost/listoor:latest
     container_name: listoor
     env_file:
       - .env
