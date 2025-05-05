@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  listoor:
+    image: listoor:latest
+    container_name: listoor
+    env_file:
+      - .env
+    volumes:
+      - ./data/collections.json:/app/data/collections.json
