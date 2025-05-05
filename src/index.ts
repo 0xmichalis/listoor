@@ -301,7 +301,7 @@ const monitorCollection = async (c: Collection) => {
                     c.minPrice
             ) {
                 console.log(
-                    `Our NFT is already listed at min price for ${c.collectionSlug} (tokenId=${c.tokenId}). Skipping...`
+                    `Our NFT is already listed at min price ${formatEther(c.minPrice)} ETH for ${c.collectionSlug} (tokenId=${c.tokenId}). Skipping...`
                 );
                 return;
             }
