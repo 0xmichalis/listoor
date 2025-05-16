@@ -1,10 +1,10 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  listoor:
-    image: ghcr.io/0xmichalis/listoor:latest
-    container_name: listoor
-    env_file:
-      - .env
-    volumes:
-      - ./data/collections.json:/app/data/collections.json
+    listoor:
+        image: ghcr.io/0xmichalis/listoor:latest
+        container_name: listoor
+        env_file:
+            - .env
+        volumes:
+            - ./data/collections.json:/app/data/collections.json
