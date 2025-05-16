@@ -15,9 +15,6 @@ jobs:
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
 
       - name: Install dependencies
         run: yarn install
@@ -27,12 +24,10 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write  # Required to push to GHCR
       id-token: write  # Required for OIDC auth (optional for GHCR)
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
