@@ -1,5 +1,4 @@
-# .github/workflows/build-and-push.yml
-name: Build and Push Docker Image
+name: CI
 
 on:
   push:
