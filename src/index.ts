@@ -294,14 +294,16 @@ const monitorCollection = async (c: Collection) => {
                 c.tokenId,
                 owner.address
             );
+            const listedPrice = ourListing
+                ? BigInt(ourListing.price.current.value) / sumOfferEndAmounts(ourListing)
+                : 0n;
             if (
                 ourListing &&
                 ourListing.price.current.currency === 'ETH' &&
-                BigInt(ourListing.price.current.value) / sumOfferEndAmounts(ourListing) ===
-                    c.minPrice
+                listedPrice <= c.minPrice
             ) {
                 console.log(
-                    `Our NFT is already listed at min price ${formatEther(c.minPrice)} ETH for ${c.collectionSlug} (tokenId=${c.tokenId}). Skipping...`
+                    `Our ${c.collectionSlug} NFT (tokenId=${c.tokenId}) is already listed at price ${formatEther(listedPrice)} ETH which is equal or lower than min price ${formatEther(c.minPrice)} ETH. Skipping...`
                 );
                 return;
             }
