@@ -6,7 +6,8 @@
         "build": "tsc",
         "format:write": "prettier --write .",
         "format:check": "prettier --check .",
-        "start": "tsc && node dist/index.js"
+        "start": "tsc && node dist/index.js",
+        "postinstall": "husky install"
     },
     "dependencies": {
         "dotenv": "^16.4.5",
