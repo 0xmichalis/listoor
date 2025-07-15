@@ -142,16 +142,18 @@ const listNFT = async (
     price: bigint,
     expirationTime: number
 ): Promise<OrderV2> => {
-    const tx = await withRateLimitRetry(() => seaport.createListing({
-        asset: {
-            tokenId,
-            tokenAddress,
-        },
-        accountAddress: owner.address,
-        startAmount: formatEther(price),
-        expirationTime,
-        excludeOptionalCreatorFees: true,
-    }));
+    const tx = await withRateLimitRetry(() =>
+        seaport.createListing({
+            asset: {
+                tokenId,
+                tokenAddress,
+            },
+            accountAddress: owner.address,
+            startAmount: formatEther(price),
+            expirationTime,
+            excludeOptionalCreatorFees: true,
+        })
+    );
 
     console.log(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
     return tx;
@@ -169,7 +171,9 @@ const getBestListing = async (
     offerer?: string,
     next?: string
 ): Promise<Listing | undefined> => {
-    const listingsResp = await withRateLimitRetry(() => seaport.api.getAllListings(collectionSlug, 100, next));
+    const listingsResp = await withRateLimitRetry(() =>
+        seaport.api.getAllListings(collectionSlug, 100, next)
+    );
 
     // Get all listings matching our criteria
     const filteredListings = listingsResp.listings.filter((l) => {
@@ -179,12 +183,7 @@ const getBestListing = async (
         const matchesOfferer = offerer
             ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() === offerer.toLowerCase()
             : true;
-        return (
-            l?.price?.value &&
-            l?.price?.value !== '0' &&
-            matchesToken &&
-            matchesOfferer
-        );
+        return l?.price?.value && l?.price?.value !== '0' && matchesToken && matchesOfferer;
     });
 
     // Pick the cheapest
@@ -225,7 +224,9 @@ const getSingleBestListing = async (
     let bestListing: Listing | undefined;
 
     try {
-        bestListing = await withRateLimitRetry(() => seaport.api.getBestListing(collectionSlug, tokenId));
+        bestListing = await withRateLimitRetry(() =>
+            seaport.api.getBestListing(collectionSlug, tokenId)
+        );
     } catch (error) {
         const isMultiAssetErr = isMultiAssetError(error);
         if (!isMultiAssetErr) {
@@ -298,11 +299,7 @@ const monitorCollection = async (c: Collection) => {
             const listedPrice = ourListing
                 ? BigInt(ourListing.price.value) / sumOfferEndAmounts(ourListing)
                 : 0n;
-            if (
-                ourListing &&
-                ourListing.price.currency === 'ETH' &&
-                listedPrice <= c.minPrice
-            ) {
+            if (ourListing && ourListing.price.currency === 'ETH' && listedPrice <= c.minPrice) {
                 console.log(
                     `Our ${c.collectionSlug} NFT (tokenId=${c.tokenId}) is already listed at price ${formatEther(listedPrice)} ETH which is equal or lower than min price ${formatEther(c.minPrice)} ETH. Skipping...`
                 );
