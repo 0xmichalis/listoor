@@ -179,8 +179,8 @@ const getBestListing = async (
             ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() === offerer.toLowerCase()
             : true;
         return (
-            l?.price?.current?.value &&
-            l?.price?.current?.value !== '0' &&
+            l?.price?.value &&
+            l?.price?.value !== '0' &&
             matchesToken &&
             matchesOfferer
         );
@@ -188,8 +188,8 @@ const getBestListing = async (
 
     // Pick the cheapest
     filteredListings.sort((a, b) => {
-        const priceA = BigInt(a.price.current.value) / sumOfferEndAmounts(a);
-        const priceB = BigInt(b.price.current.value) / sumOfferEndAmounts(b);
+        const priceA = BigInt(a.price.value) / sumOfferEndAmounts(a);
+        const priceB = BigInt(b.price.value) / sumOfferEndAmounts(b);
         return priceA < priceB ? -1 : priceA > priceB ? 1 : 0;
     });
     let listing = filteredListings[0];
@@ -207,8 +207,8 @@ const getBestListing = async (
         if (
             !listing ||
             (nextListing &&
-                BigInt(nextListing.price.current.value) / sumOfferEndAmounts(nextListing) <
-                    BigInt(listing.price.current.value) / sumOfferEndAmounts(listing))
+                BigInt(nextListing.price.value) / sumOfferEndAmounts(nextListing) <
+                    BigInt(listing.price.value) / sumOfferEndAmounts(listing))
         ) {
             return nextListing;
         }
@@ -256,7 +256,7 @@ const monitorCollection = async (c: Collection) => {
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
-        if (bestListing.price.current.currency !== 'ETH') {
+        if (bestListing.price.currency !== 'ETH') {
             // TODO: Handle this case by converting to the price of ETH
             console.error(
                 `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is not in ETH. Skipping...`
@@ -264,7 +264,7 @@ const monitorCollection = async (c: Collection) => {
             return;
         }
 
-        price = BigInt(bestListing.price.current.value) / sumOfferEndAmounts(bestListing);
+        price = BigInt(bestListing.price.value) / sumOfferEndAmounts(bestListing);
 
         // TODO: Need to also compare token ids as if we have more than one token ids to be listed
         // in the collection then only one will get listed and the rest will be ignored.
@@ -295,11 +295,11 @@ const monitorCollection = async (c: Collection) => {
                 owner.address
             );
             const listedPrice = ourListing
-                ? BigInt(ourListing.price.current.value) / sumOfferEndAmounts(ourListing)
+                ? BigInt(ourListing.price.value) / sumOfferEndAmounts(ourListing)
                 : 0n;
             if (
                 ourListing &&
-                ourListing.price.current.currency === 'ETH' &&
+                ourListing.price.currency === 'ETH' &&
                 listedPrice <= c.minPrice
             ) {
                 console.log(
