@@ -12,6 +12,7 @@ import fs from 'fs';
 import { OpenSeaSDK, Chain, Listing, OrderV2 } from 'opensea-js';
 
 import { sleep } from './utils/sleep.js';
+import { withRateLimitRetry } from './utils/ratelimit.js';
 
 dotenv.config();
 
@@ -141,7 +142,7 @@ const listNFT = async (
     price: bigint,
     expirationTime: number
 ): Promise<OrderV2> => {
-    const tx = await seaport.createListing({
+    const tx = await withRateLimitRetry(() => seaport.createListing({
         asset: {
             tokenId,
             tokenAddress,
@@ -150,7 +151,7 @@ const listNFT = async (
         startAmount: formatEther(price),
         expirationTime,
         excludeOptionalCreatorFees: true,
-    });
+    }));
 
     console.log(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
     return tx;
@@ -168,7 +169,7 @@ const getBestListing = async (
     offerer?: string,
     next?: string
 ): Promise<Listing | undefined> => {
-    const listingsResp = await seaport.api.getAllListings(collectionSlug, 100, next);
+    const listingsResp = await withRateLimitRetry(() => seaport.api.getAllListings(collectionSlug, 100, next));
 
     // Get all listings matching our criteria
     const filteredListings = listingsResp.listings.filter((l) => {
@@ -224,7 +225,7 @@ const getSingleBestListing = async (
     let bestListing: Listing | undefined;
 
     try {
-        bestListing = await seaport.api.getBestListing(collectionSlug, tokenId);
+        bestListing = await withRateLimitRetry(() => seaport.api.getBestListing(collectionSlug, tokenId));
     } catch (error) {
         const isMultiAssetErr = isMultiAssetError(error);
         if (!isMultiAssetErr) {
