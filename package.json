@@ -2,6 +2,9 @@
     "name": "listoor",
     "packageManager": "yarn@4.4.0",
     "type": "module",
+    "engines": {
+        "node": ">=20.0.0"
+    },
     "scripts": {
         "build": "tsc",
         "format:write": "prettier --write .",
