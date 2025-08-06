@@ -9,10 +9,11 @@ import {
     getAddress,
 } from 'ethers';
 import fs from 'fs';
-import { OpenSeaSDK, Chain, Listing, OrderV2 } from 'opensea-js';
+import { OpenSeaSDK, Chain, Listing, OrderV2, OrderSide } from 'opensea-js';
 
 import { sleep } from './utils/sleep.js';
 import { withRateLimitRetry } from './utils/ratelimit.js';
+import { orderV2ToListing } from './listings/orderV2ToListing.js';
 
 dotenv.config();
 
@@ -163,11 +164,6 @@ const listNFT = async (
     return tx;
 };
 
-const multiAssetErrRegex = /Multiple assets with the token_id/;
-
-const isMultiAssetError = (error: unknown): boolean =>
-    error instanceof Error && !!error.message.match(multiAssetErrRegex);
-
 // Workaround for OpenSea SDK issue https://github.com/ProjectOpenSea/opensea-js/issues/1682
 const patchOpenSeaSDKIssue = (listing: Listing): Listing => {
     if (!listing.price?.value && (listing.price as any).current) {
@@ -232,28 +228,28 @@ const getBestListing = async (
 
 const getSingleBestListing = async (
     seaport: OpenSeaSDK,
-    collectionSlug: string,
+    tokenAddress: string,
     tokenId: string
 ): Promise<Listing | undefined> => {
-    let bestListing: Listing | undefined;
-
-    try {
-        bestListing = await withRateLimitRetry(() =>
-            seaport.api.getBestListing(collectionSlug, tokenId)
-        );
-    } catch (error) {
-        const isMultiAssetErr = isMultiAssetError(error);
-        if (!isMultiAssetErr) {
-            throw error;
-        }
-        // Try to find the listing by fetching all listings
-        // This can be optimized by caching responses
-        bestListing = await getBestListing(seaport, collectionSlug, tokenId);
+    // Workaround for broken getBestListing API: https://github.com/ProjectOpenSea/opensea-js/issues/1735
+    // Use getOrders with SELL side and filter by contract address and token ID
+    const orders = await withRateLimitRetry(() =>
+        seaport.api.getOrders({
+            side: OrderSide.LISTING,
+            assetContractAddress: tokenAddress,
+            tokenId,
+            // TODO: Handle "Sorting by price is only supported for a single token" error
+            // This means that for ERC1155 tokens, we need to get all listings and sort them by price
+            // and then pick the cheapest one.
+            orderBy: 'eth_price',
+            orderDirection: 'asc',
+        })
+    );
+    if (!orders.orders || orders.orders.length === 0) {
+        return undefined;
     }
 
-    if (bestListing) {
-        bestListing = patchOpenSeaSDKIssue(bestListing);
-    }
+    let bestListing = orderV2ToListing(orders.orders[0], seaport.chain);
 
     return bestListing;
 };
@@ -265,7 +261,7 @@ const monitorCollection = async (c: Collection) => {
     const seaport = openSeaClients[c.chain];
     const bestListing = c.shouldCompareToRest
         ? await getBestListing(seaport, c.collectionSlug)
-        : await getSingleBestListing(seaport, c.collectionSlug, c.tokenId);
+        : await getSingleBestListing(seaport, c.tokenAddress, c.tokenId);
 
     let price: bigint;
     let expirationTime: number;
