@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 
 yarn format:write
+yarn build
 
 git add .
