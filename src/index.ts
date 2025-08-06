@@ -61,6 +61,10 @@ const getChainFromChainId = (chainId: number): Chain => {
             return Chain.Zora;
         case 137:
             return Chain.Polygon;
+        case 360:
+            return Chain.Shape;
+        case 10:
+            return Chain.Optimism;
         default:
             throw new Error(`Unsupported chain ID: ${chainId}`);
     }
@@ -95,7 +99,7 @@ const initializeClients = async () => {
 };
 
 const initializeCollections = () => {
-    const parsedCollections = JSON.parse(fs.readFileSync(COLLECTION_PATH, 'utf-8'));
+    const parsedCollections: Collection[] = JSON.parse(fs.readFileSync(COLLECTION_PATH, 'utf-8'));
 
     for (let c of parsedCollections) {
         // Validate against providers
