@@ -168,6 +168,14 @@ const multiAssetErrRegex = /Multiple assets with the token_id/;
 const isMultiAssetError = (error: unknown): boolean =>
     error instanceof Error && !!error.message.match(multiAssetErrRegex);
 
+// Workaround for OpenSea SDK issue https://github.com/ProjectOpenSea/opensea-js/issues/1682
+const patchOpenSeaSDKIssue = (listing: Listing): Listing => {
+    if (!listing.price?.value && (listing.price as any).current) {
+        listing.price = (listing.price as any).current;
+    }
+    return listing;
+};
+
 const getBestListing = async (
     seaport: OpenSeaSDK,
     collectionSlug: string,
@@ -187,7 +195,9 @@ const getBestListing = async (
         const matchesOfferer = offerer
             ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() === offerer.toLowerCase()
             : true;
-        return l?.price?.value && l?.price?.value !== '0' && matchesToken && matchesOfferer;
+
+        const priceValue = patchOpenSeaSDKIssue(l)?.price?.value;
+        return priceValue && priceValue !== '0' && matchesToken && matchesOfferer;
     });
 
     // Pick the cheapest
@@ -239,6 +249,10 @@ const getSingleBestListing = async (
         // Try to find the listing by fetching all listings
         // This can be optimized by caching responses
         bestListing = await getBestListing(seaport, collectionSlug, tokenId);
+    }
+
+    if (bestListing) {
+        bestListing = patchOpenSeaSDKIssue(bestListing);
     }
 
     return bestListing;
