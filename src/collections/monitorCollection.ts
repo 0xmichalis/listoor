@@ -22,7 +22,7 @@ export const monitorCollection = async (c: Collection, seaport: OpenSeaSDK, owne
 
     const bestListing = c.shouldCompareToRest
         ? await getBestListing(seaport, c.collectionSlug)
-        : await getSingleBestListing(seaport, c.tokenAddress, c.tokenId);
+        : await getSingleBestListing(seaport, c.collectionSlug, c.tokenAddress, c.tokenId);
 
     let price: bigint;
     let expirationTime: number;

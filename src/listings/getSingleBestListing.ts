@@ -2,6 +2,7 @@ import { OpenSeaSDK, Listing, OrderSide } from 'opensea-js';
 
 import { withRateLimitRetry } from '../utils/ratelimit.js';
 import { orderV2ToListing } from './orderV2ToListing.js';
+import { getBestListing } from './getBestListing.js';
 
 /**
  * Gets the best listing for a specific token
@@ -12,12 +13,32 @@ import { orderV2ToListing } from './orderV2ToListing.js';
  */
 export const getSingleBestListing = async (
     seaport: OpenSeaSDK,
+    collectionSlug: string,
     tokenAddress: string,
     tokenId: string
 ): Promise<Listing | undefined> => {
-    // Workaround for broken getBestListing API: https://github.com/ProjectOpenSea/opensea-js/issues/1735
-    // Use getOrders with SELL side and filter by contract address and token ID
-    const orders = await withRateLimitRetry(() =>
+    try {
+        return await getBestListingFromOrders(seaport, tokenAddress, tokenId);
+    } catch (error) {
+        if (
+            error instanceof Error &&
+            error.message.includes('Sorting by price is only supported for a single token')
+        ) {
+            return await getBestListing(seaport, collectionSlug, tokenId);
+        }
+
+        throw error;
+    }
+};
+
+// Workaround for broken getBestListing API: https://github.com/ProjectOpenSea/opensea-js/issues/1735
+// Use getOrders with SELL side and filter by contract address and token ID
+const getBestListingFromOrders = async (
+    seaport: OpenSeaSDK,
+    tokenAddress: string,
+    tokenId: string
+): Promise<Listing | undefined> => {
+    const orderResp = await withRateLimitRetry(() =>
         seaport.api.getOrders({
             side: OrderSide.LISTING,
             assetContractAddress: tokenAddress,
@@ -29,11 +50,9 @@ export const getSingleBestListing = async (
             orderDirection: 'asc',
         })
     );
-    if (!orders.orders || orders.orders.length === 0) {
+    if (!orderResp.orders || orderResp.orders.length === 0) {
         return undefined;
     }
 
-    let bestListing = orderV2ToListing(orders.orders[0], seaport.chain);
-
-    return bestListing;
+    return orderV2ToListing(orderResp.orders[0], seaport.chain);
 };
