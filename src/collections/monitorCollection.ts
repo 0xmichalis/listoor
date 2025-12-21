@@ -33,7 +33,7 @@ export const monitorCollection = async (c: Collection, seaport: OpenSeaSDK, owne
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
-        if (bestListing.price.currency !== 'ETH') {
+        if (bestListing.price.current.currency !== 'ETH') {
             // TODO: Handle this case by converting to the price of ETH
             console.error(
                 `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is not in ETH. Skipping...`
@@ -41,7 +41,7 @@ export const monitorCollection = async (c: Collection, seaport: OpenSeaSDK, owne
             return;
         }
 
-        price = BigInt(bestListing.price.value) / sumOfferEndAmounts(bestListing);
+        price = BigInt(bestListing.price.current.value) / sumOfferEndAmounts(bestListing);
 
         // TODO: Need to also compare token ids as if we have more than one token ids to be listed
         // in the collection then only one will get listed and the rest will be ignored.
@@ -67,9 +67,13 @@ export const monitorCollection = async (c: Collection, seaport: OpenSeaSDK, owne
             // Use getBestListing with offerer to check if our NFT is listed at min price
             const ourListing = await getBestListing(seaport, c.collectionSlug, c.tokenId, owner);
             const listedPrice = ourListing
-                ? BigInt(ourListing.price.value) / sumOfferEndAmounts(ourListing)
+                ? BigInt(ourListing.price.current.value) / sumOfferEndAmounts(ourListing)
                 : 0n;
-            if (ourListing && ourListing.price.currency === 'ETH' && listedPrice <= c.minPrice) {
+            if (
+                ourListing &&
+                ourListing.price.current.currency === 'ETH' &&
+                listedPrice <= c.minPrice
+            ) {
                 console.log(
                     `Our ${c.collectionSlug} NFT (tokenId=${c.tokenId}) is already listed at price ${formatEther(listedPrice)} ETH which is equal or lower than min price ${formatEther(c.minPrice)} ETH. Skipping...`
                 );

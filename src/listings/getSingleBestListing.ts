@@ -42,7 +42,7 @@ const getBestListingFromOrders = async (
         seaport.api.getOrders({
             side: OrderSide.LISTING,
             assetContractAddress: tokenAddress,
-            tokenId,
+            tokenIds: [tokenId],
             // TODO: Handle "Sorting by price is only supported for a single token" error
             // This means that for ERC1155 tokens, we need to get all listings and sort them by price
             // and then pick the cheapest one.

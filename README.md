@@ -4,14 +4,14 @@ A bot to maintain listings on OpenSea.
 
 Requirements:
 
--   Node.js v20 or higher
--   Yarn
+- Node.js v20 or higher
+- pnpm
 
 ## Run
 
-    yarn
-    yarn build
-    yarn start
+    pnpm install
+    pnpm build
+    pnpm start
 
 ## Troubleshoot
 

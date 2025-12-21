@@ -2,7 +2,7 @@ import { getAddress } from 'ethers';
 import { OpenSeaSDK, Listing } from 'opensea-js';
 
 import { withRateLimitRetry } from '../utils/ratelimit.js';
-import { patchOpenSeaSDKIssue, sumOfferEndAmounts } from './utils.js';
+import { sumOfferEndAmounts } from './utils.js';
 
 /**
  * Gets the best (cheapest) listing for a collection
@@ -33,14 +33,14 @@ export const getBestListing = async (
             ? getAddress(l.protocol_data.parameters.offerer).toLowerCase() === offerer.toLowerCase()
             : true;
 
-        const priceValue = patchOpenSeaSDKIssue(l)?.price?.value;
+        const priceValue = l.price.current.value;
         return priceValue && priceValue !== '0' && matchesToken && matchesOfferer;
     });
 
     // Pick the cheapest
     filteredListings.sort((a, b) => {
-        const priceA = BigInt(a.price.value) / sumOfferEndAmounts(a);
-        const priceB = BigInt(b.price.value) / sumOfferEndAmounts(b);
+        const priceA = BigInt(a.price.current.value) / sumOfferEndAmounts(a);
+        const priceB = BigInt(b.price.current.value) / sumOfferEndAmounts(b);
         return priceA < priceB ? -1 : priceA > priceB ? 1 : 0;
     });
     let listing = filteredListings[0];
@@ -58,8 +58,8 @@ export const getBestListing = async (
         if (
             !listing ||
             (nextListing &&
-                BigInt(nextListing.price.value) / sumOfferEndAmounts(nextListing) <
-                    BigInt(listing.price.value) / sumOfferEndAmounts(listing))
+                BigInt(nextListing.price.current.value) / sumOfferEndAmounts(nextListing) <
+                    BigInt(listing.price.current.value) / sumOfferEndAmounts(listing))
         ) {
             return nextListing;
         }

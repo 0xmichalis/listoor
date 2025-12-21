@@ -2,7 +2,7 @@ FROM node:20 AS builder
 WORKDIR /build
 COPY . .
 RUN npm install -g corepack && corepack enable
-RUN yarn && yarn build
+RUN pnpm install && pnpm build
 
 FROM gcr.io/distroless/nodejs20-debian12
 COPY --from=builder /build/dist /app

@@ -1,4 +1,4 @@
-import { Listing, OrderV2 } from 'opensea-js';
+import { Listing, OrderV2, OrderStatus } from 'opensea-js';
 
 /**
  * Converts an OrderV2 to a Listing type.
@@ -16,11 +16,15 @@ export function orderV2ToListing(orderV2: OrderV2, chain: string): Listing {
         protocol_data: orderV2.protocolData,
         protocol_address: orderV2.protocolAddress,
         price: {
-            currency: currency.symbol,
-            decimals: currency.decimals,
-            value: orderV2.currentPrice.toString(),
+            current: {
+                currency: currency.symbol,
+                decimals: currency.decimals,
+                value: orderV2.currentPrice.toString(),
+            },
         },
         type: orderV2.orderType,
+        remaining_quantity: 1,
+        status: OrderStatus.ACTIVE,
     };
 }
 

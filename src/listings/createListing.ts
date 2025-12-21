@@ -35,9 +35,9 @@ export const createListing = async (
                 tokenAddress,
             },
             accountAddress: owner,
-            startAmount: formatEther(price),
+            amount: formatEther(price),
             expirationTime: adjustedExpirationTime,
-            excludeOptionalCreatorFees: true,
+            includeOptionalCreatorFees: false,
         })
     );
 
