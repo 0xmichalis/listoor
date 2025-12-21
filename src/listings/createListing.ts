@@ -3,6 +3,8 @@ import { OpenSeaSDK, OrderV2 } from 'opensea-js';
 
 import { withRateLimitRetry } from '../utils/ratelimit.js';
 
+const MIN_EXPIRATION_TIME_SECONDS = 11 * 60; // 11 minutes
+
 /**
  * Creates a new NFT listing on OpenSea
  * @param seaport The OpenSea SDK instance
@@ -21,6 +23,11 @@ export const createListing = async (
     expirationTime: number,
     owner: string
 ): Promise<OrderV2> => {
+    // Enforce minimum expiration time of 11 minutes from now
+    const currentTime = Math.floor(Date.now() / 1000);
+    const minExpirationTime = currentTime + MIN_EXPIRATION_TIME_SECONDS;
+    const adjustedExpirationTime = Math.max(expirationTime, minExpirationTime);
+
     const tx = await withRateLimitRetry(() =>
         seaport.createListing({
             asset: {
@@ -29,7 +36,7 @@ export const createListing = async (
             },
             accountAddress: owner,
             startAmount: formatEther(price),
-            expirationTime,
+            expirationTime: adjustedExpirationTime,
             excludeOptionalCreatorFees: true,
         })
     );
