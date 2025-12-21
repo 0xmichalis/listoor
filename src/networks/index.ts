@@ -1,6 +1,8 @@
 import { ethers, Network, JsonRpcProvider, Wallet } from 'ethers';
 import { OpenSeaSDK, Chain } from 'opensea-js';
 
+import { withRetry } from '../utils/ratelimit.js';
+
 const getChainFromChainId = (chainId: number): Chain => {
     switch (chainId) {
         case 1:
@@ -39,9 +41,14 @@ export const initializeClients = async (
         });
 
         console.log(`Fetching chain ID for ${chain} ...`);
-        const chainId = await provider
-            .getNetwork()
-            .then((network: Network) => Number(network.chainId));
+        const chainId = await withRetry(
+            () => provider.getNetwork().then((network: Network) => Number(network.chainId)),
+            {
+                maxRetries: 5,
+                baseDelayMs: 2000,
+                maxDelayMs: 30000,
+            }
+        );
         console.log(`Chain ID for ${chain}: ${chainId}`);
 
         // Cache providers and OpenSeaSDK instances
