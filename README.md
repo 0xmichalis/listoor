@@ -11,7 +11,7 @@ Requirements:
 
     pnpm install
     pnpm build
-    pnpm start
+    DRY_RUN=false pnpm start
 
 ## Troubleshoot
 

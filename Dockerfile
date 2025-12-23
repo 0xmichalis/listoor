@@ -9,4 +9,5 @@ COPY --from=builder /build/dist /app
 COPY --from=builder /build/package.json /app/package.json
 COPY --from=builder /build/node_modules /app/node_modules
 WORKDIR /app
+ENV DRY_RUN=false
 CMD ["index.js"]

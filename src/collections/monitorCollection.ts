@@ -16,8 +16,14 @@ const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
  * @param c The collection configuration
  * @param seaport The OpenSea SDK instance
  * @param owner The wallet owner
+ * @param dryRun If true, skip actual listing creation
  */
-export const monitorCollection = async (c: Collection, seaport: OpenSeaSDK, owner: string) => {
+export const monitorCollection = async (
+    c: Collection,
+    seaport: OpenSeaSDK,
+    owner: string,
+    dryRun: boolean = false
+) => {
     console.log(`Checking ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
 
     const bestListing = c.shouldCompareToRest
@@ -86,5 +92,5 @@ export const monitorCollection = async (c: Collection, seaport: OpenSeaSDK, owne
     console.log(
         `Listing ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH ...`
     );
-    await createListing(seaport, c.tokenAddress, c.tokenId, price, expirationTime, owner);
+    await createListing(seaport, c.tokenAddress, c.tokenId, price, expirationTime, owner, dryRun);
 };

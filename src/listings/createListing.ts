@@ -13,7 +13,8 @@ const MIN_EXPIRATION_TIME_SECONDS = 11 * 60; // 11 minutes
  * @param price The price in wei
  * @param expirationTime The expiration timestamp
  * @param owner The wallet owner address
- * @returns The created OrderV2
+ * @param dryRun If true, skip actual listing creation
+ * @returns The created OrderV2 or undefined in dry-run mode
  */
 export const createListing = async (
     seaport: OpenSeaSDK,
@@ -21,12 +22,20 @@ export const createListing = async (
     tokenId: string,
     price: bigint,
     expirationTime: number,
-    owner: string
-): Promise<OrderV2> => {
+    owner: string,
+    dryRun: boolean = false
+): Promise<OrderV2 | undefined> => {
     // Enforce minimum expiration time of 11 minutes from now
     const currentTime = Math.floor(Date.now() / 1000);
     const minExpirationTime = currentTime + MIN_EXPIRATION_TIME_SECONDS;
     const adjustedExpirationTime = Math.max(expirationTime, minExpirationTime);
+
+    if (dryRun) {
+        console.log(
+            `[DRY-RUN] Would create listing for ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH (expires: ${new Date(adjustedExpirationTime * 1000).toISOString()})`
+        );
+        return undefined;
+    }
 
     const tx = await withRateLimitRetry(() =>
         seaport.createListing({

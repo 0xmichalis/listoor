@@ -1,10 +1,42 @@
-[
-    {
-        "chain": "ethereum",
-        "collectionSlug": "cryptopunks",
-        "tokenAddress": "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB",
-        "tokenId": 1,
-        "defaultPriceETH": 0.1,
-        "minPriceETH": 0.01
-    }
-]
+{
+    "listings": [
+        {
+            "chain": "ethereum",
+            "collectionSlug": "cryptopunks",
+            "tokenAddress": "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB",
+            "tokenId": 1,
+            "defaultPriceETH": 0.1,
+            "minPriceETH": 0.01
+        }
+    ],
+    "offers": [
+        {
+            "chain": "ethereum",
+            "collectionSlug": "cryptopunks",
+            "tokenAddress": "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB",
+            "tokenId": 1,
+            "defaultPriceETH": 0.1,
+            "maxPriceETH": 0.2
+        },
+        {
+            "chain": "ethereum",
+            "collectionSlug": "cryptopunks",
+            "tokenAddress": "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB",
+            "defaultPriceETH": 0.15,
+            "maxPriceETH": 0.25,
+            "quantity": 2
+        },
+        {
+            "chain": "ethereum",
+            "collectionSlug": "cryptopunks",
+            "tokenAddress": "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB",
+            "trait": {
+                "traitType": "Type",
+                "value": "Alien"
+            },
+            "defaultPriceETH": 0.5,
+            "maxPriceETH": 1.0,
+            "quantity": 3
+        }
+    ]
+}

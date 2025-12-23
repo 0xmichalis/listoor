@@ -1,0 +1,248 @@
+import { formatEther, getAddress, parseEther } from 'ethers';
+import { OpenSeaSDK } from 'opensea-js';
+
+import { OfferCollection, inferOfferType } from '../collections/types.js';
+import {
+    getBestOffer,
+    getSingleBestOffer,
+    getBestCollectionOffer,
+    getBestTraitOffer,
+    createOffer,
+    createCollectionOffer,
+    createTraitOffer,
+    sumOfferEndAmounts,
+    getOfferQuantity,
+} from './index.js';
+import { isETHOrWETH, getPaymentTokenAddress } from './paymentTokens.js';
+
+const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
+const OPENSEA_PRICE_INCREMENT = parseEther('0.0001'); // OpenSea requires 4 decimal places (0.0001 ETH increments)
+
+/**
+ * Rounds a price down to the nearest 0.0001 ETH increment (OpenSea requirement)
+ * OpenSea requires prices to be rounded DOWN to 4 decimal places
+ * @param price Price in wei
+ * @returns Rounded down price in wei
+ */
+function roundToOpenSeaIncrement(price: bigint): bigint {
+    // Round down to increment: (price / increment) * increment
+    return (price / OPENSEA_PRICE_INCREMENT) * OPENSEA_PRICE_INCREMENT;
+}
+
+/**
+ * Monitors a specific NFT collection and creates/updates offers as needed
+ * @param c The offer collection configuration
+ * @param seaport The OpenSea SDK instance
+ * @param owner The wallet owner
+ * @param dryRun If true, skip actual offer creation
+ */
+export const monitorOffer = async (
+    c: OfferCollection,
+    seaport: OpenSeaSDK,
+    owner: string,
+    dryRun: boolean = false
+) => {
+    // Infer offer type from configuration
+    const offerType = inferOfferType(c);
+    const logPrefix =
+        offerType === 'collection'
+            ? `collection offer for ${c.collectionSlug}`
+            : offerType === 'trait' && c.trait
+              ? `trait offer for ${c.collectionSlug} (${c.trait.traitType}: ${c.trait.value})`
+              : `single token offer for ${c.collectionSlug} (tokenId=${c.tokenId})`;
+
+    console.log(`Checking ${logPrefix} ...`);
+
+    // Get the best offer based on offer type
+    let bestOffer;
+    if (offerType === 'collection') {
+        bestOffer = await getBestCollectionOffer(seaport, c.collectionSlug);
+    } else if (offerType === 'trait' && c.trait) {
+        bestOffer = await getBestTraitOffer(
+            seaport,
+            c.collectionSlug,
+            c.trait.traitType,
+            c.trait.value
+        );
+    } else {
+        // Single token offer
+        if (!c.tokenId) {
+            throw new Error(`tokenId is required for single token offers`);
+        }
+        bestOffer = c.shouldCompareToRest
+            ? await getBestOffer(seaport, c.collectionSlug)
+            : await getSingleBestOffer(seaport, c.collectionSlug, c.tokenAddress, c.tokenId);
+    }
+
+    let price: bigint;
+    let expirationTime: number;
+    let paymentCurrency: string = 'WETH'; // Default to WETH (ETH not supported for offers on some chains)
+
+    if (!bestOffer || !bestOffer.protocol_data || !bestOffer.protocol_data.parameters) {
+        console.log(`Did not find an offer for ${logPrefix} ...`);
+        // If no best offer, create a new offer with the starting price
+        price = c.defaultPrice;
+        expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
+    } else {
+        // Check if currency is ETH or WETH
+        if (!isETHOrWETH(bestOffer.price.currency)) {
+            console.error(
+                `Best offer for ${logPrefix} is not in ETH or WETH (currency: ${bestOffer.price.currency}). Skipping...`
+            );
+            return;
+        }
+
+        // Always use WETH for offers (ETH not supported on some chains)
+        // If best offer is in ETH, we'll still use WETH but match the price
+        paymentCurrency = 'WETH';
+
+        // Calculate price per item
+        // For collection and trait offers, we need to divide total price by quantity
+        // For single token offers, we need to divide by sumOfferEndAmounts to account for fees
+        let bestOfferQuantity: number = 1;
+        if (offerType === 'collection' || offerType === 'trait') {
+            bestOfferQuantity = getOfferQuantity(bestOffer);
+            const totalPrice = BigInt(bestOffer.price.value);
+            price = totalPrice / BigInt(bestOfferQuantity);
+        } else {
+            price = BigInt(bestOffer.price.value) / sumOfferEndAmounts(bestOffer);
+        }
+
+        const offerer = getAddress(bestOffer.protocol_data.parameters.offerer);
+        if (offerer.toLowerCase() === owner.toLowerCase()) {
+            const quantityText =
+                offerType === 'collection' || offerType === 'trait'
+                    ? ` (quantity: ${bestOfferQuantity})`
+                    : '';
+            console.log(
+                `Already have the highest offer for ${logPrefix} at price ${formatEther(price)} ${paymentCurrency} per item${quantityText}. Skipping...`
+            );
+            return;
+        }
+
+        const quantityText =
+            offerType === 'collection' || offerType === 'trait'
+                ? ` (quantity: ${bestOfferQuantity})`
+                : '';
+        console.log(
+            `Found best offer for ${logPrefix} at ${formatEther(price)} ${paymentCurrency} per item${quantityText}`
+        );
+
+        if (price <= c.maxPrice) {
+            // Add one increment to beat the offer
+            const newPrice = price + OPENSEA_PRICE_INCREMENT;
+            price = newPrice > c.defaultPrice ? newPrice : c.defaultPrice;
+            expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
+        } else {
+            // Check if our offer is already at max price
+            let ourOffer;
+            if (offerType === 'collection') {
+                ourOffer = await getBestCollectionOffer(seaport, c.collectionSlug, owner);
+            } else if (offerType === 'trait' && c.trait) {
+                ourOffer = await getBestTraitOffer(
+                    seaport,
+                    c.collectionSlug,
+                    c.trait.traitType,
+                    c.trait.value,
+                    owner
+                );
+            } else {
+                ourOffer = await getBestOffer(seaport, c.collectionSlug, c.tokenId, owner);
+            }
+
+            // Calculate price per item for our offer
+            let offeredPrice: bigint;
+            if (ourOffer) {
+                if (offerType === 'collection' || offerType === 'trait') {
+                    const quantity = getOfferQuantity(ourOffer);
+                    const totalPrice = BigInt(ourOffer.price.value);
+                    offeredPrice = totalPrice / BigInt(quantity);
+                } else {
+                    offeredPrice = BigInt(ourOffer.price.value) / sumOfferEndAmounts(ourOffer);
+                }
+            } else {
+                offeredPrice = 0n;
+            }
+            const ourOfferCurrency = ourOffer ? ourOffer.price.currency : paymentCurrency;
+            if (
+                ourOffer &&
+                isETHOrWETH(ourOfferCurrency) &&
+                isETHOrWETH(paymentCurrency) &&
+                offeredPrice >= c.maxPrice
+            ) {
+                console.log(
+                    `Our ${logPrefix} is already at price ${formatEther(offeredPrice)} ${ourOfferCurrency} which is equal or higher than max price ${formatEther(c.maxPrice)} ${paymentCurrency}. Skipping...`
+                );
+                return;
+            }
+            price = c.maxPrice;
+            expirationTime = Math.floor(Date.now() / 1000) + 12 * 60 * 60; // 12 hours
+        }
+    }
+
+    // Get payment token address based on currency and chain
+    // For now, we'll use the chain from seaport to determine the network
+    // Default to mainnet (chainId 1) if we can't determine
+    const paymentTokenAddress = getPaymentTokenAddress(paymentCurrency);
+
+    // Create the appropriate type of offer
+    const quantity = c.quantity || 1; // Default to 1 if not set
+
+    // For collection and trait offers, OpenSea validates the per-unit price
+    // So we need to round the per-unit price, then multiply by quantity
+    let finalPrice: bigint;
+    if (offerType === 'collection' || offerType === 'trait') {
+        // Round per-unit price to OpenSea increment
+        const perUnitPrice = roundToOpenSeaIncrement(price);
+        // Multiply by quantity to get total price
+        finalPrice = perUnitPrice * BigInt(quantity);
+    } else {
+        // For single token offers, just round the price
+        finalPrice = roundToOpenSeaIncrement(price);
+    }
+
+    console.log(
+        `Creating ${logPrefix} at ${formatEther(finalPrice)} ${paymentCurrency}${offerType === 'collection' || offerType === 'trait' ? ` (${formatEther(roundToOpenSeaIncrement(price))} per unit × ${quantity})` : ''} ...`
+    );
+
+    if (offerType === 'collection') {
+        await createCollectionOffer(
+            seaport,
+            c.collectionSlug,
+            finalPrice,
+            expirationTime,
+            owner,
+            quantity,
+            paymentTokenAddress,
+            dryRun
+        );
+    } else if (offerType === 'trait' && c.trait) {
+        await createTraitOffer(
+            seaport,
+            c.collectionSlug,
+            c.trait.traitType,
+            c.trait.value,
+            finalPrice,
+            expirationTime,
+            owner,
+            quantity,
+            paymentTokenAddress,
+            dryRun
+        );
+    } else {
+        // Single token offer
+        if (!c.tokenId) {
+            throw new Error(`tokenId is required for single token offers`);
+        }
+        await createOffer(
+            seaport,
+            c.tokenAddress,
+            c.tokenId,
+            finalPrice,
+            expirationTime,
+            owner,
+            paymentTokenAddress,
+            dryRun
+        );
+    }
+};
