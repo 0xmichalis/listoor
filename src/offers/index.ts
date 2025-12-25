@@ -24,5 +24,7 @@ export {
     getPaymentTokenAddress,
     getCurrencyFromAddress,
     ETH_PAYMENT_TOKEN,
+    WETH_PAYMENT_TOKENS,
     WETH_PAYMENT_TOKEN_MAINNET,
+    WETH_PAYMENT_TOKEN_SHAPE,
 } from './paymentTokens.js';

@@ -2,8 +2,25 @@
  * Payment token addresses
  */
 export const ETH_PAYMENT_TOKEN = '0x0000000000000000000000000000000000000000'; // ETH address
-export const WETH_PAYMENT_TOKEN_MAINNET = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'; // WETH on Ethereum mainnet
-export const WETH_PAYMENT_TOKEN_SEPOLIA = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14'; // WETH on Sepolia
+
+/**
+ * WETH payment token addresses by chain ID
+ */
+const MAINNET_WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+
+export const WETH_PAYMENT_TOKENS: Record<number, string> = {
+    1: MAINNET_WETH, // Ethereum mainnet
+    10: MAINNET_WETH, // Optimism
+    137: MAINNET_WETH, // Polygon
+    8453: MAINNET_WETH, // Base
+    42161: MAINNET_WETH, // Arbitrum
+    7777777: MAINNET_WETH, // Zora
+    360: '0x4200000000000000000000000000000000000006', // Shape chain
+};
+
+// Legacy constants for backward compatibility
+export const WETH_PAYMENT_TOKEN_MAINNET = WETH_PAYMENT_TOKENS[1];
+export const WETH_PAYMENT_TOKEN_SHAPE = WETH_PAYMENT_TOKENS[360];
 
 /**
  * Checks if a currency is ETH or WETH
@@ -19,7 +36,7 @@ export const isETHOrWETH = (currency: string): boolean => {
  * @param chainId Optional chain ID (defaults to mainnet)
  * @returns The payment token address
  */
-export const getPaymentTokenAddress = (currency: string, chainId?: number): string => {
+export const getPaymentTokenAddress = (currency: string, chainId: number): string => {
     const normalized = currency.toUpperCase();
 
     if (normalized === 'ETH') {
@@ -27,13 +44,11 @@ export const getPaymentTokenAddress = (currency: string, chainId?: number): stri
     }
 
     if (normalized === 'WETH') {
-        // Default to mainnet WETH, but could be extended for other chains
-        // For now, assuming mainnet (chainId 1) or undefined means mainnet
-        if (chainId === 11155111) {
-            // Sepolia testnet
-            return WETH_PAYMENT_TOKEN_SEPOLIA;
+        if (WETH_PAYMENT_TOKENS[chainId]) {
+            return WETH_PAYMENT_TOKENS[chainId];
         }
-        return WETH_PAYMENT_TOKEN_MAINNET;
+
+        return MAINNET_WETH;
     }
 
     throw new Error(`Unsupported payment token: ${currency}`);
@@ -49,10 +64,8 @@ export const getCurrencyFromAddress = (address: string): string => {
         return 'ETH';
     }
 
-    if (
-        normalized === WETH_PAYMENT_TOKEN_MAINNET.toLowerCase() ||
-        normalized === WETH_PAYMENT_TOKEN_SEPOLIA.toLowerCase()
-    ) {
+    // Check if address matches any WETH token address
+    if (Object.values(WETH_PAYMENT_TOKENS).some((addr) => normalized === addr.toLowerCase())) {
         return 'WETH';
     }
 

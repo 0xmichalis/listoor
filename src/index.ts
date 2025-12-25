@@ -52,6 +52,7 @@ const monitorListings = async (
 const monitorOffers = async (
     offerCollections: ReturnType<typeof initializeOfferCollections>,
     openSeaClients: Record<string, any>,
+    chainIds: Record<string, number>,
     owner: string,
     dryRun: boolean
 ) => {
@@ -61,6 +62,7 @@ const monitorOffers = async (
                 await monitorOffer(
                     offerCollection,
                     openSeaClients[offerCollection.chain],
+                    chainIds[offerCollection.chain],
                     owner,
                     dryRun
                 );
@@ -89,7 +91,7 @@ const main = async () => {
     );
 
     const owner = new Wallet(PRIVATE_KEY);
-    const { providers, openSeaClients } = await initializeClients(
+    const { providers, openSeaClients, chainIds } = await initializeClients(
         RPC_ENDPOINTS,
         PRIVATE_KEY,
         OPENSEA_API_KEY
@@ -99,7 +101,7 @@ const main = async () => {
 
     await Promise.all([
         monitorListings(collections, openSeaClients, owner.address, DRY_RUN),
-        monitorOffers(offerCollections, openSeaClients, owner.address, DRY_RUN),
+        monitorOffers(offerCollections, openSeaClients, chainIds, owner.address, DRY_RUN),
     ]);
 };
 

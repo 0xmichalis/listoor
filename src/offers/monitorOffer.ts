@@ -34,12 +34,14 @@ function roundToOpenSeaIncrement(price: bigint): bigint {
  * Monitors a specific NFT collection and creates/updates offers as needed
  * @param c The offer collection configuration
  * @param seaport The OpenSea SDK instance
+ * @param chainId The chain ID for the collection
  * @param owner The wallet owner
  * @param dryRun If true, skip actual offer creation
  */
 export const monitorOffer = async (
     c: OfferCollection,
     seaport: OpenSeaSDK,
+    chainId: number,
     owner: string,
     dryRun: boolean = false
 ) => {
@@ -182,9 +184,8 @@ export const monitorOffer = async (
     }
 
     // Get payment token address based on currency and chain
-    // For now, we'll use the chain from seaport to determine the network
-    // Default to mainnet (chainId 1) if we can't determine
-    const paymentTokenAddress = getPaymentTokenAddress(paymentCurrency);
+    // Use the chain ID to determine the correct payment token
+    const paymentTokenAddress = getPaymentTokenAddress(paymentCurrency, chainId);
 
     // Create the appropriate type of offer
     const quantity = c.quantity || 1; // Default to 1 if not set

@@ -9,6 +9,7 @@ import {
     createListing,
     sumOfferEndAmounts,
 } from '../listings/index.js';
+import { isETHOrWETH } from '../offers/paymentTokens.js';
 
 const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
 
@@ -40,10 +41,10 @@ export const monitorCollection = async (
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
-        if (bestListing.price.current.currency !== 'ETH') {
+        if (!isETHOrWETH(bestListing.price.current.currency)) {
             // TODO: Handle this case by converting to the price of ETH
             logger.error(
-                `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is not in ETH. Skipping...`
+                `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is not in ETH or WETH (currency: ${bestListing.price.current.currency}). Skipping...`
             );
             return;
         }
@@ -78,7 +79,7 @@ export const monitorCollection = async (
                 : 0n;
             if (
                 ourListing &&
-                ourListing.price.current.currency === 'ETH' &&
+                isETHOrWETH(ourListing.price.current.currency) &&
                 listedPrice <= c.minPrice
             ) {
                 logger.debug(

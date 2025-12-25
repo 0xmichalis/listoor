@@ -32,6 +32,7 @@ export const initializeClients = async (
 ) => {
     const providers: Record<string, JsonRpcProvider> = {};
     const openSeaClients: Record<string, OpenSeaSDK> = {};
+    const chainIds: Record<string, number> = {};
 
     for (const rpcEndpoint of rpcEndpoints) {
         const [chain, url] = rpcEndpoint.split('::');
@@ -52,8 +53,9 @@ export const initializeClients = async (
         );
         logger.debug(`Chain ID for ${chain}: ${chainId}`);
 
-        // Cache providers and OpenSeaSDK instances
+        // Cache providers, chain IDs, and OpenSeaSDK instances
         providers[chain] = provider;
+        chainIds[chain] = chainId;
         const signer: Wallet = new ethers.Wallet(privateKey, provider);
         logger.debug(`${chain} RPC provider initialized.`);
 
@@ -64,5 +66,5 @@ export const initializeClients = async (
         logger.debug(`${chain} OpenSea client initialized.`);
     }
 
-    return { providers, openSeaClients };
+    return { providers, openSeaClients, chainIds };
 };
