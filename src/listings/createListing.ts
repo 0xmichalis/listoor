@@ -9,6 +9,7 @@ const MIN_EXPIRATION_TIME_SECONDS = 11 * 60; // 11 minutes
 /**
  * Creates a new NFT listing on OpenSea
  * @param seaport The OpenSea SDK instance
+ * @param collectionSlug The collection slug
  * @param tokenAddress The token contract address
  * @param tokenId The token ID
  * @param price The price in wei
@@ -19,6 +20,7 @@ const MIN_EXPIRATION_TIME_SECONDS = 11 * 60; // 11 minutes
  */
 export const createListing = async (
     seaport: OpenSeaSDK,
+    collectionSlug: string,
     tokenAddress: string,
     tokenId: string,
     price: bigint,
@@ -33,7 +35,7 @@ export const createListing = async (
 
     if (dryRun) {
         logger.info(
-            `[DRY-RUN] Would create listing for ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH (expires: ${new Date(adjustedExpirationTime * 1000).toISOString()})`
+            `[DRY-RUN] Would create listing for ${collectionSlug} ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH (expires: ${new Date(adjustedExpirationTime * 1000).toISOString()})`
         );
         return undefined;
     }
@@ -51,6 +53,8 @@ export const createListing = async (
         })
     );
 
-    logger.info(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
+    logger.info(
+        `Successfully listed ${collectionSlug} ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`
+    );
     return tx;
 };

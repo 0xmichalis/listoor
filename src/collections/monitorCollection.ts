@@ -94,5 +94,14 @@ export const monitorCollection = async (
     logger.debug(
         `Listing ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH ...`
     );
-    await createListing(seaport, c.tokenAddress, c.tokenId, price, expirationTime, owner, dryRun);
+    await createListing(
+        seaport,
+        c.collectionSlug,
+        c.tokenAddress,
+        c.tokenId,
+        price,
+        expirationTime,
+        owner,
+        dryRun
+    );
 };
