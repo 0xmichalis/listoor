@@ -53,7 +53,6 @@ export const initializeClients = async (
         );
         logger.debug(`Chain ID for ${chain}: ${chainId}`);
 
-        // Cache providers, chain IDs, and OpenSeaSDK instances
         providers[chain] = provider;
         chainIds[chain] = chainId;
         const signer: Wallet = new ethers.Wallet(privateKey, provider);

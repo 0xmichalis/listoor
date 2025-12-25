@@ -13,6 +13,7 @@ import {
     createTraitOffer,
     sumOfferEndAmounts,
     getOfferQuantity,
+    deriveExpirationTime,
 } from './index.js';
 import { isETHOrWETH, getPaymentTokenAddress } from './paymentTokens.js';
 
@@ -85,8 +86,11 @@ export const monitorOffer = async (
         logger.debug(`Did not find an offer for ${logPrefix} ...`);
         // If no best offer, create a new offer with the starting price
         price = c.defaultPrice;
-        expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
+        expirationTime = deriveExpirationTime(undefined, DEFAULT_EXPIRATION_TIME);
     } else {
+        // Use the previous offer's expiration time
+        const previousExpirationTime = Number(bestOffer.protocol_data.parameters.endTime);
+        expirationTime = deriveExpirationTime(previousExpirationTime, DEFAULT_EXPIRATION_TIME);
         // Check if currency is ETH or WETH
         if (!isETHOrWETH(bestOffer.price.currency)) {
             logger.error(
@@ -135,7 +139,6 @@ export const monitorOffer = async (
             // Add one increment to beat the offer
             const newPrice = price + OPENSEA_PRICE_INCREMENT;
             price = newPrice > c.defaultPrice ? newPrice : c.defaultPrice;
-            expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
         } else {
             // Check if our offer is already at max price
             let ourOffer;
@@ -179,7 +182,6 @@ export const monitorOffer = async (
                 return;
             }
             price = c.maxPrice;
-            expirationTime = Math.floor(Date.now() / 1000) + 12 * 60 * 60; // 12 hours
         }
     }
 

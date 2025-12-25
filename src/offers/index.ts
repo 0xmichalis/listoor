@@ -17,6 +17,7 @@ export {
     getOfferQuantity,
     getOfferType,
     getOfferPricePerItem,
+    deriveExpirationTime,
 } from './utils.js';
 export { monitorOffer } from './monitorOffer.js';
 export {

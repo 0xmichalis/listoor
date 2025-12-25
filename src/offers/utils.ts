@@ -77,3 +77,34 @@ export function getOfferPricePerItem(offer: Offer): bigint {
     const totalPrice = BigInt(offer.price.value);
     return totalPrice / BigInt(quantity);
 }
+
+const MIN_EXPIRATION_TIME_SECONDS = 15 * 60; // 15 minutes minimum to avoid OpenSea API issues
+
+/**
+ * Derives the expiration time for a new offer
+ * Uses the previous offer's expiration time if available, otherwise uses the default expiration time
+ * Ensures the expiration time is at least 15 minutes from now to avoid OpenSea API issues
+ * @param previousExpirationTime The expiration time from the previous offer (in seconds), or undefined if no previous offer
+ * @param defaultExpirationTimeSeconds The default expiration time in seconds to use when there's no previous offer
+ * @returns The expiration time in seconds (Unix timestamp)
+ */
+export function deriveExpirationTime(
+    previousExpirationTime: number | undefined,
+    defaultExpirationTimeSeconds: number
+): number {
+    const currentTime = Math.floor(Date.now() / 1000);
+    const minExpirationTime = currentTime + MIN_EXPIRATION_TIME_SECONDS;
+
+    let expirationTime: number;
+    if (previousExpirationTime !== undefined) {
+        // Use the previous offer's expiration time, but ensure it's at least 15 minutes from now
+        expirationTime = Math.max(previousExpirationTime, minExpirationTime);
+    } else {
+        // No previous offer, use default expiration time
+        expirationTime = currentTime + defaultExpirationTimeSeconds;
+        // Still ensure it's at least 15 minutes from now (though default should be much longer)
+        expirationTime = Math.max(expirationTime, minExpirationTime);
+    }
+
+    return expirationTime;
+}
