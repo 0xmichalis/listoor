@@ -6,8 +6,18 @@ export { getBestOffer } from './getBestOffer.js';
 export { getSingleBestOffer } from './getSingleBestOffer.js';
 export { getBestCollectionOffer } from './getBestCollectionOffer.js';
 export { getBestTraitOffer } from './getBestTraitOffer.js';
+export { getAllOffers } from './getAllOffers.js';
+export { getAllCollectionOffers } from './getAllCollectionOffers.js';
+export { getAllTraitOffers } from './getAllTraitOffers.js';
+export { cancelOffer } from './cancelOffer.js';
+export { cancelOldOffers } from './cancelOldOffers.js';
 export { orderV2ToOffer } from './orderV2ToOffer.js';
-export { sumOfferEndAmounts, getOfferQuantity } from './utils.js';
+export {
+    sumOfferEndAmounts,
+    getOfferQuantity,
+    getOfferType,
+    getOfferPricePerItem,
+} from './utils.js';
 export { monitorOffer } from './monitorOffer.js';
 export {
     isETHOrWETH,

@@ -7,7 +7,7 @@ import {
     initializeOfferCollections,
     monitorCollection,
 } from './collections/index.js';
-import { monitorOffer } from './offers/index.js';
+import { monitorOffer, cancelOldOffers } from './offers/index.js';
 import { initializeClients } from './networks/index.js';
 
 dotenv.config();
@@ -66,6 +66,13 @@ const monitorOffers = async (
         for (const offerCollection of offerCollections) {
             try {
                 await monitorOffer(
+                    offerCollection,
+                    openSeaClients[offerCollection.chain],
+                    owner,
+                    dryRun
+                );
+
+                await cancelOldOffers(
                     offerCollection,
                     openSeaClients[offerCollection.chain],
                     owner,

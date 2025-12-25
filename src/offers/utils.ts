@@ -45,3 +45,35 @@ export function getOfferQuantity(offer: Offer): number {
     // Default to 1 if no quantity found
     return quantity || 1;
 }
+
+/**
+ * Determines the offer type from the offer structure
+ * @param offer The offer to analyze
+ * @returns The offer type: 'single', 'collection', or 'trait'
+ */
+export function getOfferType(offer: Offer): 'single' | 'collection' | 'trait' {
+    if (offer.criteria) {
+        if (offer.criteria.trait) {
+            return 'trait';
+        }
+        return 'collection';
+    }
+    return 'single';
+}
+
+/**
+ * Gets the price per item for an offer
+ * For collection/trait offers: price per item = total price / quantity
+ * For single token offers: price = total price / sumOfferEndAmounts (to account for fees)
+ * @param offer The offer to get price from
+ * @returns The price per item as a bigint
+ */
+export function getOfferPricePerItem(offer: Offer): bigint {
+    const offerType = getOfferType(offer);
+    if (offerType === 'single') {
+        return BigInt(offer.price.value) / sumOfferEndAmounts(offer);
+    }
+    const quantity = getOfferQuantity(offer);
+    const totalPrice = BigInt(offer.price.value);
+    return totalPrice / BigInt(quantity);
+}
