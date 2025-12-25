@@ -1,6 +1,6 @@
 import { OpenSeaSDK, Listing, OrderSide } from 'opensea-js';
 
-import { withRateLimitRetry } from '../utils/ratelimit.js';
+import { withRateLimitRetry, withRetry } from '../utils/ratelimit.js';
 import { orderV2ToListing } from './orderV2ToListing.js';
 import { getBestListing } from './getBestListing.js';
 
@@ -38,17 +38,21 @@ const getBestListingFromOrders = async (
     tokenAddress: string,
     tokenId: string
 ): Promise<Listing | undefined> => {
-    const orderResp = await withRateLimitRetry(() =>
-        seaport.api.getOrders({
-            side: OrderSide.LISTING,
-            assetContractAddress: tokenAddress,
-            tokenIds: [tokenId],
-            // TODO: Handle "Sorting by price is only supported for a single token" error
-            // This means that for ERC1155 tokens, we need to get all listings and sort them by price
-            // and then pick the cheapest one.
-            orderBy: 'eth_price',
-            orderDirection: 'asc',
-        })
+    // Wrap with withRetry to handle transient errors like JSON parsing failures,
+    // then withRateLimitRetry to handle rate limits
+    const orderResp = await withRetry(() =>
+        withRateLimitRetry(() =>
+            seaport.api.getOrders({
+                side: OrderSide.LISTING,
+                assetContractAddress: tokenAddress,
+                tokenIds: [tokenId],
+                // TODO: Handle "Sorting by price is only supported for a single token" error
+                // This means that for ERC1155 tokens, we need to get all listings and sort them by price
+                // and then pick the cheapest one.
+                orderBy: 'eth_price',
+                orderDirection: 'asc',
+            })
+        )
     );
     if (!orderResp.orders || orderResp.orders.length === 0) {
         return undefined;
