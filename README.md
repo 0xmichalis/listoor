@@ -1,6 +1,6 @@
 # listoor
 
-A bot to maintain listings on OpenSea.
+A bot to maintain listings and offers on OpenSea.
 
 Requirements:
 
