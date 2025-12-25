@@ -1,6 +1,7 @@
 import { formatEther, getAddress } from 'ethers';
 import { OpenSeaSDK, Offer } from 'opensea-js';
 
+import { logger } from '../utils/logger.js';
 import { withRateLimitRetry } from '../utils/ratelimit.js';
 import { getOfferQuantity, getOfferPricePerItem } from './utils.js';
 
@@ -24,7 +25,7 @@ export const cancelOffer = async (
 
     // Log the cancellation attempt
     const dryRunPrefix = dryRun ? '[DRY-RUN] ' : '';
-    console.log(
+    logger.info(
         `${dryRunPrefix}Canceling offer: ${collectionSlug || 'unknown'}, price: ${formatEther(pricePerItem)} ${offer.price.currency}, quantity: ${quantity}`
     );
 
@@ -44,7 +45,7 @@ export const cancelOffer = async (
                     accountAddress,
                 })
             );
-            console.log(
+            logger.info(
                 `Successfully canceled offer: ${collectionSlug || 'unknown'}, price: ${formatEther(pricePerItem)} ${offer.price.currency}, quantity: ${quantity}`
             );
             return true;
@@ -55,7 +56,7 @@ export const cancelOffer = async (
         }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`Failed to cancel offer ${offer.order_hash || 'unknown'}: ${errorMessage}`);
+        logger.error(`Failed to cancel offer ${offer.order_hash || 'unknown'}: ${errorMessage}`);
         return false;
     }
 };

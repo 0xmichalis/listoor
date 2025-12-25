@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { Wallet } from 'ethers';
 
+import { logger } from './utils/logger.js';
 import { sleep } from './utils/sleep.js';
 import {
     initializeCollections,
@@ -11,14 +12,6 @@ import { monitorOffer, cancelOldOffers } from './offers/index.js';
 import { initializeClients } from './networks/index.js';
 
 dotenv.config();
-
-(function () {
-    const originalLog = console.log;
-    console.log = (...args: any[]) => {
-        const timestamp = new Date().toISOString();
-        originalLog(`[${timestamp}]`, ...args);
-    };
-})();
 
 const RPC_ENDPOINTS = process.env.RPC_ENDPOINTS!.split(',');
 const COLLECTION_PATH = process.env.COLLECTION_PATH!;
@@ -45,13 +38,13 @@ const monitorListings = async (
                     dryRun
                 );
             } catch (err) {
-                console.error(
+                logger.error(
                     `Error monitoring listing collection ${collection.collectionSlug}:`,
                     err
                 );
             }
         }
-        console.log('[Listings] Waiting for next poll ...');
+        logger.debug('[Listings] Waiting for next poll ...');
         await sleep(POLLING_INTERVAL_SECONDS);
     }
 };
@@ -79,19 +72,19 @@ const monitorOffers = async (
                     dryRun
                 );
             } catch (err) {
-                console.error(
+                logger.error(
                     `Error monitoring offer collection ${offerCollection.collectionSlug}:`,
                     err
                 );
             }
         }
-        console.log('[Offers] Waiting for next poll ...');
+        logger.debug('[Offers] Waiting for next poll ...');
         await sleep(POLLING_INTERVAL_SECONDS);
     }
 };
 
 const main = async () => {
-    console.log(
+    logger.info(
         `Dry-run mode: ${DRY_RUN ? 'ENABLED ⚠️  (No state-changing operations will be executed)' : 'DISABLED (All operations will be executed)'}`
     );
 
@@ -104,11 +97,13 @@ const main = async () => {
     const collections = initializeCollections(COLLECTION_PATH, providers);
     const offerCollections = initializeOfferCollections(COLLECTION_PATH, providers);
 
-    console.log('Starting listings and offers monitoring...');
     await Promise.all([
         monitorListings(collections, openSeaClients, owner.address, DRY_RUN),
         monitorOffers(offerCollections, openSeaClients, owner.address, DRY_RUN),
     ]);
 };
 
-main().catch(console.error);
+main().catch((error) => {
+    logger.error('Fatal error:', error);
+    process.exit(1);
+});

@@ -1,3 +1,5 @@
+import { logger } from './logger.js';
+
 export async function withRateLimitRetry<T>(
     fn: () => Promise<T>,
     options?: {
@@ -18,7 +20,7 @@ export async function withRateLimitRetry<T>(
             if ('retryAfter' in error && attempt < maxRetries) {
                 const retryAfter = Number(error.retryAfter) || 1;
                 const delay = Math.min(baseDelayMs * 2 ** attempt * retryAfter, maxDelayMs);
-                console.log(
+                logger.debug(
                     `Rate limited. Retry after ${retryAfter} seconds (attempt ${attempt + 1}/${maxRetries}, waiting ${delay}ms)`
                 );
                 await new Promise((resolve) => setTimeout(resolve, delay));
@@ -72,7 +74,7 @@ export async function withRetry<T>(
 
             if (isRetryable) {
                 const delay = Math.min(baseDelayMs * 2 ** attempt, maxDelayMs);
-                console.log(
+                logger.debug(
                     `Error: ${errorMessage || errorCode}. Retrying (attempt ${attempt + 1}/${maxRetries}, waiting ${delay}ms)...`
                 );
                 await new Promise((resolve) => setTimeout(resolve, delay));

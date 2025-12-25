@@ -1,6 +1,7 @@
 import { formatEther } from 'ethers';
 import { OpenSeaSDK, OrderV2 } from 'opensea-js';
 
+import { logger } from '../utils/logger.js';
 import { withRateLimitRetry } from '../utils/ratelimit.js';
 
 const MIN_EXPIRATION_TIME_SECONDS = 11 * 60; // 11 minutes
@@ -31,7 +32,7 @@ export const createListing = async (
     const adjustedExpirationTime = Math.max(expirationTime, minExpirationTime);
 
     if (dryRun) {
-        console.log(
+        logger.info(
             `[DRY-RUN] Would create listing for ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH (expires: ${new Date(adjustedExpirationTime * 1000).toISOString()})`
         );
         return undefined;
@@ -50,6 +51,6 @@ export const createListing = async (
         })
     );
 
-    console.log(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
+    logger.info(`Successfully listed ${tokenAddress}:${tokenId} at ${formatEther(price)} ETH`);
     return tx;
 };

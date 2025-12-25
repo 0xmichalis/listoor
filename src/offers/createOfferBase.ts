@@ -1,6 +1,7 @@
 import { formatEther } from 'ethers';
 import { OpenSeaSDK, OrderV2, CollectionOffer } from 'opensea-js';
 
+import { logger } from '../utils/logger.js';
 import { withRateLimitRetry } from '../utils/ratelimit.js';
 import { ETH_PAYMENT_TOKEN, getCurrencyFromAddress } from './paymentTokens.js';
 
@@ -64,7 +65,7 @@ export const createOfferBase = async (
     if (dryRun) {
         const quantityText =
             params.type !== 'single' ? ` (quantity: ${params.quantity || 1},` : ' (';
-        console.log(
+        logger.info(
             `[DRY-RUN] Would create ${logDescription} at ${formatEther(price)} ${currency}${quantityText} expires: ${new Date(adjustedExpirationTime * 1000).toISOString()})`
         );
         return undefined;
@@ -116,7 +117,7 @@ export const createOfferBase = async (
     }
 
     const quantityText = params.type !== 'single' ? ` (quantity: ${params.quantity || 1})` : '';
-    console.log(
+    logger.info(
         `Successfully created ${logDescription} at ${formatEther(price)} ${currency}${quantityText}`
     );
     return tx;

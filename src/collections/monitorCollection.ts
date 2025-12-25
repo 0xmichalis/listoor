@@ -1,6 +1,7 @@
 import { formatEther, getAddress } from 'ethers';
 import { OpenSeaSDK } from 'opensea-js';
 
+import { logger } from '../utils/logger.js';
 import { Collection } from './types.js';
 import {
     getBestListing,
@@ -24,7 +25,7 @@ export const monitorCollection = async (
     owner: string,
     dryRun: boolean = false
 ) => {
-    console.log(`Checking ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
+    logger.debug(`Checking ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
 
     const bestListing = c.shouldCompareToRest
         ? await getBestListing(seaport, c.collectionSlug)
@@ -34,14 +35,14 @@ export const monitorCollection = async (
     let expirationTime: number;
 
     if (!bestListing || !bestListing.protocol_data || !bestListing.protocol_data.parameters) {
-        console.log(`Did not find a listing for ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
+        logger.debug(`Did not find a listing for ${c.collectionSlug} (tokenId=${c.tokenId}) ...`);
         // If no best listing, create a new listing with the starting price
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
         if (bestListing.price.current.currency !== 'ETH') {
             // TODO: Handle this case by converting to the price of ETH
-            console.error(
+            logger.error(
                 `Best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) is not in ETH. Skipping...`
             );
             return;
@@ -53,13 +54,13 @@ export const monitorCollection = async (
         // in the collection then only one will get listed and the rest will be ignored.
         const lister = getAddress(bestListing.protocol_data.parameters.offerer);
         if (lister.toLowerCase() === owner.toLowerCase()) {
-            console.log(
+            logger.debug(
                 `Already have the lowest listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at price ${formatEther(price)} ETH. Skipping...`
             );
             return;
         }
 
-        console.log(
+        logger.debug(
             `Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`
         );
 
@@ -80,7 +81,7 @@ export const monitorCollection = async (
                 ourListing.price.current.currency === 'ETH' &&
                 listedPrice <= c.minPrice
             ) {
-                console.log(
+                logger.debug(
                     `Our ${c.collectionSlug} NFT (tokenId=${c.tokenId}) is already listed at price ${formatEther(listedPrice)} ETH which is equal or lower than min price ${formatEther(c.minPrice)} ETH. Skipping...`
                 );
                 return;
@@ -89,7 +90,7 @@ export const monitorCollection = async (
             expirationTime = Math.floor(Date.now() / 1000) + 12 * 60 * 60; // 12 hours
         }
     }
-    console.log(
+    logger.debug(
         `Listing ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH ...`
     );
     await createListing(seaport, c.tokenAddress, c.tokenId, price, expirationTime, owner, dryRun);

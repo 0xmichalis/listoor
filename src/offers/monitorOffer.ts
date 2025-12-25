@@ -2,6 +2,7 @@ import { formatEther, getAddress, parseEther } from 'ethers';
 import { OpenSeaSDK } from 'opensea-js';
 
 import { OfferCollection, inferOfferType } from '../collections/types.js';
+import { logger } from '../utils/logger.js';
 import {
     getBestOffer,
     getSingleBestOffer,
@@ -51,7 +52,7 @@ export const monitorOffer = async (
               ? `trait offer for ${c.collectionSlug} (${c.trait.traitType}: ${c.trait.value})`
               : `single token offer for ${c.collectionSlug} (tokenId=${c.tokenId})`;
 
-    console.log(`Checking ${logPrefix} ...`);
+    logger.debug(`Checking ${logPrefix} ...`);
 
     // Get the best offer based on offer type
     let bestOffer;
@@ -79,14 +80,14 @@ export const monitorOffer = async (
     let paymentCurrency: string = 'WETH'; // Default to WETH (ETH not supported for offers on some chains)
 
     if (!bestOffer || !bestOffer.protocol_data || !bestOffer.protocol_data.parameters) {
-        console.log(`Did not find an offer for ${logPrefix} ...`);
+        logger.debug(`Did not find an offer for ${logPrefix} ...`);
         // If no best offer, create a new offer with the starting price
         price = c.defaultPrice;
         expirationTime = Math.floor(Date.now() / 1000) + DEFAULT_EXPIRATION_TIME;
     } else {
         // Check if currency is ETH or WETH
         if (!isETHOrWETH(bestOffer.price.currency)) {
-            console.error(
+            logger.error(
                 `Best offer for ${logPrefix} is not in ETH or WETH (currency: ${bestOffer.price.currency}). Skipping...`
             );
             return;
@@ -114,7 +115,7 @@ export const monitorOffer = async (
                 offerType === 'collection' || offerType === 'trait'
                     ? ` (quantity: ${bestOfferQuantity})`
                     : '';
-            console.log(
+            logger.debug(
                 `Already have the highest offer for ${logPrefix} at price ${formatEther(price)} ${paymentCurrency} per item${quantityText}. Skipping...`
             );
             return;
@@ -124,7 +125,7 @@ export const monitorOffer = async (
             offerType === 'collection' || offerType === 'trait'
                 ? ` (quantity: ${bestOfferQuantity})`
                 : '';
-        console.log(
+        logger.debug(
             `Found best offer for ${logPrefix} at ${formatEther(price)} ${paymentCurrency} per item${quantityText}`
         );
 
@@ -170,7 +171,7 @@ export const monitorOffer = async (
                 isETHOrWETH(paymentCurrency) &&
                 offeredPrice >= c.maxPrice
             ) {
-                console.log(
+                logger.debug(
                     `Our ${logPrefix} is already at price ${formatEther(offeredPrice)} ${ourOfferCurrency} which is equal or higher than max price ${formatEther(c.maxPrice)} ${paymentCurrency}. Skipping...`
                 );
                 return;
@@ -201,7 +202,7 @@ export const monitorOffer = async (
         finalPrice = roundToOpenSeaIncrement(price);
     }
 
-    console.log(
+    logger.debug(
         `Creating ${logPrefix} at ${formatEther(finalPrice)} ${paymentCurrency}${offerType === 'collection' || offerType === 'trait' ? ` (${formatEther(roundToOpenSeaIncrement(price))} per unit × ${quantity})` : ''} ...`
     );
 

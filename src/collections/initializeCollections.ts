@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { parseEther } from 'ethers';
 
+import { logger } from '../utils/logger.js';
 import { Collection, OfferCollection, inferOfferType } from './types.js';
 
 type CollectionsConfig = {
@@ -57,13 +58,13 @@ export const initializeCollections = (
 
         c.shouldCompareToRest = c.shouldCompareToRest || false;
 
-        console.log(
+        logger.debug(
             `Tracking listing ${c.collectionSlug} (tokenId=${c.tokenId}) on ${c.chain} ...`
         );
         collections.push(c);
     }
 
-    console.log(`Tracking ${collections.length} listing collections ...`);
+    logger.info(`Tracking ${collections.length} listings ...`);
 
     return collections;
 };
@@ -156,22 +157,22 @@ export const initializeOfferCollections = (
 
         // Log based on offer type
         if (offerType === 'collection') {
-            console.log(
+            logger.debug(
                 `Tracking collection offer ${c.collectionSlug} on ${c.chain} (quantity: ${c.quantity}) ...`
             );
         } else if (offerType === 'trait' && c.trait) {
-            console.log(
+            logger.debug(
                 `Tracking trait offer ${c.collectionSlug} (${c.trait.traitType}: ${c.trait.value}) on ${c.chain} (quantity: ${c.quantity}) ...`
             );
         } else {
-            console.log(
+            logger.debug(
                 `Tracking single token offer ${c.collectionSlug} (tokenId=${c.tokenId}) on ${c.chain} ...`
             );
         }
         offerCollections.push(c);
     }
 
-    console.log(`Tracking ${offerCollections.length} offer collections ...`);
+    logger.info(`Tracking ${offerCollections.length} offers ...`);
 
     return offerCollections;
 };

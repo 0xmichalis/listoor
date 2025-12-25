@@ -1,6 +1,7 @@
 import { ethers, Network, JsonRpcProvider, Wallet } from 'ethers';
 import { OpenSeaSDK, Chain } from 'opensea-js';
 
+import { logger } from '../utils/logger.js';
 import { withRetry } from '../utils/ratelimit.js';
 
 const getChainFromChainId = (chainId: number): Chain => {
@@ -35,12 +36,12 @@ export const initializeClients = async (
     for (const rpcEndpoint of rpcEndpoints) {
         const [chain, url] = rpcEndpoint.split('::');
 
-        console.log(`Initializing clients for chain ${chain} ...`);
+        logger.debug(`Initializing clients for chain ${chain} ...`);
         const provider = new JsonRpcProvider(url, undefined, {
             staticNetwork: true,
         });
 
-        console.log(`Fetching chain ID for ${chain} ...`);
+        logger.debug(`Fetching chain ID for ${chain} ...`);
         const chainId = await withRetry(
             () => provider.getNetwork().then((network: Network) => Number(network.chainId)),
             {
@@ -49,18 +50,18 @@ export const initializeClients = async (
                 maxDelayMs: 30000,
             }
         );
-        console.log(`Chain ID for ${chain}: ${chainId}`);
+        logger.debug(`Chain ID for ${chain}: ${chainId}`);
 
         // Cache providers and OpenSeaSDK instances
         providers[chain] = provider;
         const signer: Wallet = new ethers.Wallet(privateKey, provider);
-        console.log(`${chain} RPC provider initialized.`);
+        logger.debug(`${chain} RPC provider initialized.`);
 
         openSeaClients[chain] = new OpenSeaSDK(signer, {
             apiKey: openSeaApiKey,
             chain: getChainFromChainId(chainId),
         });
-        console.log(`${chain} OpenSea client initialized.`);
+        logger.debug(`${chain} OpenSea client initialized.`);
     }
 
     return { providers, openSeaClients };
