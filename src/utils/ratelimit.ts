@@ -47,7 +47,7 @@ export async function withRetry<T>(
         retryableErrors?: string[];
     }
 ): Promise<T> {
-    const maxRetries = options?.maxRetries ?? 3;
+    const maxRetries = options?.maxRetries ?? 5;
     const baseDelayMs = options?.baseDelayMs ?? 1000;
     const maxDelayMs = options?.maxDelayMs ?? 30000;
     const retryableErrors = options?.retryableErrors ?? [
