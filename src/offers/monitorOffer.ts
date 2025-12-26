@@ -18,11 +18,11 @@ import {
 import { isETHOrWETH, getPaymentTokenAddress } from './paymentTokens.js';
 
 const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
-const OPENSEA_PRICE_INCREMENT = parseEther('0.0001'); // OpenSea requires 4 decimal places (0.0001 ETH increments)
+const OPENSEA_PRICE_INCREMENT = parseEther('0.001'); // OpenSea requires 3 decimal places (0.001 ETH increments) for collection/trait offers
 
 /**
- * Rounds a price down to the nearest 0.0001 ETH increment (OpenSea requirement)
- * OpenSea requires prices to be rounded DOWN to 4 decimal places
+ * Rounds a price down to the nearest 0.001 ETH increment (OpenSea requirement)
+ * OpenSea requires prices to be rounded DOWN to 3 decimal places for collection/trait offers
  * @param price Price in wei
  * @returns Rounded down price in wei
  */
