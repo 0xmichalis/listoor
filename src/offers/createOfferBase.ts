@@ -1,4 +1,4 @@
-import { formatEther } from 'ethers';
+import { formatEther, parseEther } from 'ethers';
 import { OpenSeaSDK, OrderV2, CollectionOffer } from 'opensea-js';
 
 import { logger } from '../utils/logger.js';
@@ -6,6 +6,58 @@ import { withRateLimitRetry } from '../utils/ratelimit.js';
 import { ETH_PAYMENT_TOKEN, getCurrencyFromAddress } from './paymentTokens.js';
 
 const MIN_EXPIRATION_TIME_SECONDS = 11 * 60; // 11 minutes
+const OPENSEA_PRICE_INCREMENT_3_DECIMALS = parseEther('0.001'); // Fallback: 3 decimal places (0.001 ETH increments)
+
+/**
+ * Rounds a price down to the nearest 0.001 ETH increment
+ * Used as fallback when OpenSea requires 3 decimals instead of 4
+ * @param price Price in wei
+ * @returns Rounded down price in wei
+ */
+function roundToThreeDecimals(price: bigint): bigint {
+    return (price / OPENSEA_PRICE_INCREMENT_3_DECIMALS) * OPENSEA_PRICE_INCREMENT_3_DECIMALS;
+}
+
+/**
+ * Checks if an error is about OpenSea requiring 3 decimals instead of 4
+ * @param error The error to check
+ * @returns True if the error is about 3 decimals requirement
+ */
+function isThreeDecimalsError(error: any): boolean {
+    const errorMessage = error?.message || String(error);
+    return errorMessage.includes('3 decimals allowed') || errorMessage.includes('3 decimal');
+}
+
+/**
+ * Retries an offer creation with 3 decimal precision if OpenSea requires it
+ * Tries with the original price first, then retries with 3 decimals if needed
+ * @param price The original price in wei (4 decimals)
+ * @param logDescription Description for logging purposes
+ * @param createOffer Function that creates the offer with the given price
+ * @returns Object containing the result and the actual price used
+ */
+async function withThreeDecimalsRetry<T>(
+    price: bigint,
+    logDescription: string,
+    createOffer: (price: bigint) => Promise<T>
+): Promise<{ result: T; actualPrice: bigint }> {
+    try {
+        const result = await createOffer(price);
+        return { result, actualPrice: price };
+    } catch (error: any) {
+        if (isThreeDecimalsError(error)) {
+            // Retry with 3 decimals rounding
+            logger.debug(
+                `OpenSea requires 3 decimals for ${logDescription}, retrying with 3 decimal precision...`
+            );
+            const price3Decimals = roundToThreeDecimals(price);
+            const result = await createOffer(price3Decimals);
+            return { result, actualPrice: price3Decimals };
+        }
+        // Re-throw if it's a different error
+        throw error;
+    }
+}
 
 export type OfferCreateParams =
     | {
@@ -72,6 +124,7 @@ export const createOfferBase = async (
     }
 
     let tx: OrderV2 | CollectionOffer | null;
+    let actualPrice = price; // Track the actual price used (may be rounded to 3 decimals)
 
     if (params.type === 'single') {
         // Single token offer
@@ -89,21 +142,30 @@ export const createOfferBase = async (
         );
     } else {
         // Collection or trait offer (both use createCollectionOffer)
-        const createParams: Parameters<typeof seaport.createCollectionOffer>[0] = {
-            collectionSlug: params.collectionSlug,
-            accountAddress: owner,
-            amount: formatEther(price),
-            quantity: params.quantity || 1,
-            expirationTime: adjustedExpirationTime,
-            paymentTokenAddress,
-        };
+        // Try with 4 decimals first, retry with 3 decimals if OpenSea requires it
+        const { result, actualPrice: usedPrice } = await withThreeDecimalsRetry(
+            price,
+            logDescription,
+            async (offerPrice: bigint) => {
+                const createParams: Parameters<typeof seaport.createCollectionOffer>[0] = {
+                    collectionSlug: params.collectionSlug,
+                    accountAddress: owner,
+                    amount: formatEther(offerPrice),
+                    quantity: params.quantity || 1,
+                    expirationTime: adjustedExpirationTime,
+                    paymentTokenAddress,
+                };
 
-        if (params.type === 'trait') {
-            createParams.traitType = params.traitType;
-            createParams.traitValue = params.traitValue;
-        }
+                if (params.type === 'trait') {
+                    createParams.traitType = params.traitType;
+                    createParams.traitValue = params.traitValue;
+                }
 
-        tx = await withRateLimitRetry(() => seaport.createCollectionOffer(createParams));
+                return await withRateLimitRetry(() => seaport.createCollectionOffer(createParams));
+            }
+        );
+        tx = result;
+        actualPrice = usedPrice;
     }
 
     if (!tx) {
@@ -118,7 +180,7 @@ export const createOfferBase = async (
 
     const quantityText = params.type !== 'single' ? ` (quantity: ${params.quantity || 1})` : '';
     logger.info(
-        `Successfully created ${logDescription} at ${formatEther(price)} ${currency}${quantityText}`
+        `Successfully created ${logDescription} at ${formatEther(actualPrice)} ${currency}${quantityText}`
     );
     return tx;
 };

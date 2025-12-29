@@ -18,17 +18,18 @@ import {
 import { isETHOrWETH, getPaymentTokenAddress } from './paymentTokens.js';
 
 const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
-const OPENSEA_PRICE_INCREMENT = parseEther('0.001'); // OpenSea requires 3 decimal places (0.001 ETH increments) for collection/trait offers
+const OPENSEA_PRICE_INCREMENT_4_DECIMALS = parseEther('0.0001'); // Default: 4 decimal places (0.0001 ETH increments)
 
 /**
- * Rounds a price down to the nearest 0.001 ETH increment (OpenSea requirement)
- * OpenSea requires prices to be rounded DOWN to 3 decimal places for collection/trait offers
+ * Rounds a price down to the nearest 0.0001 ETH increment (OpenSea default requirement)
+ * OpenSea typically allows 4 decimal places for collection/trait offers
+ * If a collection requires 3 decimals, createOfferBase will automatically retry with 3 decimal precision
  * @param price Price in wei
  * @returns Rounded down price in wei
  */
-function roundToOpenSeaIncrement(price: bigint): bigint {
+function roundToFourDecimals(price: bigint): bigint {
     // Round down to increment: (price / increment) * increment
-    return (price / OPENSEA_PRICE_INCREMENT) * OPENSEA_PRICE_INCREMENT;
+    return (price / OPENSEA_PRICE_INCREMENT_4_DECIMALS) * OPENSEA_PRICE_INCREMENT_4_DECIMALS;
 }
 
 /**
@@ -137,7 +138,7 @@ export const monitorOffer = async (
 
         if (price <= c.maxPrice) {
             // Add one increment to beat the offer
-            const newPrice = price + OPENSEA_PRICE_INCREMENT;
+            const newPrice = price + OPENSEA_PRICE_INCREMENT_4_DECIMALS;
             price = newPrice > c.defaultPrice ? newPrice : c.defaultPrice;
         } else {
             // Check if our offer is already at max price
@@ -197,16 +198,16 @@ export const monitorOffer = async (
     let finalPrice: bigint;
     if (offerType === 'collection' || offerType === 'trait') {
         // Round per-unit price to OpenSea increment
-        const perUnitPrice = roundToOpenSeaIncrement(price);
+        const perUnitPrice = roundToFourDecimals(price);
         // Multiply by quantity to get total price
         finalPrice = perUnitPrice * BigInt(quantity);
     } else {
         // For single token offers, just round the price
-        finalPrice = roundToOpenSeaIncrement(price);
+        finalPrice = roundToFourDecimals(price);
     }
 
     logger.debug(
-        `Creating ${logPrefix} at ${formatEther(finalPrice)} ${paymentCurrency}${offerType === 'collection' || offerType === 'trait' ? ` (${formatEther(roundToOpenSeaIncrement(price))} per unit × ${quantity})` : ''} ...`
+        `Creating ${logPrefix} at ${formatEther(finalPrice)} ${paymentCurrency}${offerType === 'collection' || offerType === 'trait' ? ` (${formatEther(roundToFourDecimals(price))} per unit × ${quantity})` : ''} ...`
     );
 
     if (offerType === 'collection') {
