@@ -9,13 +9,20 @@ const MIN_EXPIRATION_TIME_SECONDS = 11 * 60; // 11 minutes
 const OPENSEA_PRICE_INCREMENT_3_DECIMALS = parseEther('0.001'); // Fallback: 3 decimal places (0.001 ETH increments)
 
 /**
- * Rounds a price down to the nearest 0.001 ETH increment
- * Used as fallback when OpenSea requires 3 decimals instead of 4
+ * Rounds a price up to the nearest 0.001 ETH increment.
+ *
+ * Used as fallback when OpenSea requires 3 decimals instead of 4. We round UP
+ * (not down) to avoid losing the slight price differentiation we apply when
+ * outbidding competing offers (e.g. +0.0001 ETH). Rounding down to 0.001 can
+ * collapse that differentiation and result in the same price as the competitor.
  * @param price Price in wei
- * @returns Rounded down price in wei
+ * @returns Rounded up price in wei
  */
-function roundToThreeDecimals(price: bigint): bigint {
-    return (price / OPENSEA_PRICE_INCREMENT_3_DECIMALS) * OPENSEA_PRICE_INCREMENT_3_DECIMALS;
+function roundUpToThreeDecimals(price: bigint): bigint {
+    if (price <= 0n) return price;
+    const remainder = price % OPENSEA_PRICE_INCREMENT_3_DECIMALS;
+    if (remainder === 0n) return price;
+    return price + (OPENSEA_PRICE_INCREMENT_3_DECIMALS - remainder);
 }
 
 /**
@@ -50,7 +57,7 @@ async function withThreeDecimalsRetry<T>(
             logger.debug(
                 `OpenSea requires 3 decimals for ${logDescription}, retrying with 3 decimal precision...`
             );
-            const price3Decimals = roundToThreeDecimals(price);
+            const price3Decimals = roundUpToThreeDecimals(price);
             const result = await createOffer(price3Decimals);
             return { result, actualPrice: price3Decimals };
         }
