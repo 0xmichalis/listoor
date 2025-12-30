@@ -1,7 +1,8 @@
 import { Offer } from 'opensea-js';
 
 /**
- * Default number of decimal places for price increments (0.0001 ETH)
+ * Default number of decimal places for price increments
+ * 4 decimals = 0.0001 ETH increments
  */
 export const DEFAULT_PRICE_DECIMALS = 4;
 

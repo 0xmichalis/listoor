@@ -157,15 +157,16 @@ export const initializeOfferCollections = (
         }
 
         // Set price decimals (default to 4, i.e. 0.0001 ETH increments)
-        c.priceDecimals =
+        const priceDecimals =
             c.priceDecimals !== undefined && c.priceDecimals !== null
                 ? c.priceDecimals
                 : DEFAULT_PRICE_DECIMALS;
-        if (c.priceDecimals < 1 || c.priceDecimals > 18) {
+        if (priceDecimals < 1 || priceDecimals > 18) {
             throw new Error(
                 `Price decimals must be between 1 and 18 for offer collection ${c.collectionSlug}`
             );
         }
+        c.priceDecimals = priceDecimals;
 
         // Log based on offer type
         if (offerType === 'collection') {

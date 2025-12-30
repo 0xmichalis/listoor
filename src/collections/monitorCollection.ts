@@ -65,11 +65,15 @@ export const monitorCollection = async (
             `Found best listing for ${c.collectionSlug} (tokenId=${c.tokenId}) at ${formatEther(price)} ETH`
         );
 
-        if (price >= c.minPrice) {
-            // Subtract 1000 wei from the lowest price. Any lower than 1000 wei and OpenSea will
-            // complain about not getting its 250 basis points.
+        if (price > c.defaultPrice) {
+            // If best listing is above our default price, use default price
+            price = c.defaultPrice;
+            expirationTime = Number(bestListing.protocol_data.parameters.endTime);
+        } else if (price > c.minPrice) {
+            // Subtract 1000 wei from the lowest price to undercut it
+            // Any lower than 1000 wei and OpenSea will complain about not getting its 250 basis points.
             const newPrice = (price / 1000n) * 1000n - 1000n;
-            price = newPrice < c.defaultPrice ? newPrice : c.defaultPrice;
+            price = newPrice < c.minPrice ? c.minPrice : newPrice;
             expirationTime = Number(bestListing.protocol_data.parameters.endTime);
         } else {
             // Use getBestListing with offerer to check if our NFT is listed at min price

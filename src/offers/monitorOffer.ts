@@ -148,11 +148,14 @@ export const monitorOffer = async (
             `Found best offer for ${logPrefix} at ${formatEther(price)} ${paymentCurrency} per item${quantityText}`
         );
 
-        if (price <= c.maxPrice) {
-            // Add one increment to beat the offer
+        if (price < c.defaultPrice) {
+            // If best offer is below our default price, use default price
+            price = c.defaultPrice;
+        } else if (price < c.maxPrice) {
+            // Add one increment to beat the offer, but don't exceed max price
             const priceIncrement = getPriceIncrement(c.priceDecimals || DEFAULT_PRICE_DECIMALS);
             const newPrice = price + priceIncrement;
-            price = newPrice > c.defaultPrice ? newPrice : c.defaultPrice;
+            price = newPrice > c.maxPrice ? c.maxPrice : newPrice;
         } else {
             // Check if our offer is already at max price
             let ourOffer;
