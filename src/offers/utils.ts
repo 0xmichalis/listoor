@@ -1,6 +1,11 @@
 import { Offer } from 'opensea-js';
 
 /**
+ * Default number of decimal places for price increments (0.0001 ETH)
+ */
+export const DEFAULT_PRICE_DECIMALS = 4;
+
+/**
  * Sums up the end amounts of all offer items (currency being offered) in an offer
  * @param offer The offer to calculate the sum for
  * @returns The total end amount as a bigint

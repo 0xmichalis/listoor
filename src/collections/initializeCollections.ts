@@ -3,6 +3,7 @@ import { parseEther } from 'ethers';
 
 import { logger } from '../utils/logger.js';
 import { Collection, OfferCollection, inferOfferType } from './types.js';
+import { DEFAULT_PRICE_DECIMALS } from '../offers/utils.js';
 
 type CollectionsConfig = {
     listings?: Collection[];
@@ -153,6 +154,17 @@ export const initializeOfferCollections = (
         } else {
             // Single token offers always have quantity 1
             c.quantity = 1;
+        }
+
+        // Set price decimals (default to 4, i.e. 0.0001 ETH increments)
+        c.priceDecimals =
+            c.priceDecimals !== undefined && c.priceDecimals !== null
+                ? c.priceDecimals
+                : DEFAULT_PRICE_DECIMALS;
+        if (c.priceDecimals < 1 || c.priceDecimals > 18) {
+            throw new Error(
+                `Price decimals must be between 1 and 18 for offer collection ${c.collectionSlug}`
+            );
         }
 
         // Log based on offer type

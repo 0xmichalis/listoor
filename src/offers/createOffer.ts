@@ -8,7 +8,7 @@ import { createOfferBase } from './createOfferBase.js';
  * @param seaport The OpenSea SDK instance
  * @param tokenAddress The token contract address
  * @param tokenId The token ID
- * @param price The price in wei
+ * @param price The price in wei (should already be rounded to the appropriate decimal precision)
  * @param expirationTime The expiration timestamp
  * @param owner The wallet owner address
  * @param paymentTokenAddress The payment token address (ETH or WETH)

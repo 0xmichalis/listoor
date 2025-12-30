@@ -21,6 +21,7 @@ export type OfferCollection = {
     maxPrice: bigint;
     shouldCompareToRest: boolean;
     quantity?: number; // Number of items for collection/trait offers (default: 1)
+    priceDecimals?: number; // Number of decimal places for price increments (default: 4, i.e. 0.0001 ETH)
     trait?: {
         traitType: string;
         value: string;

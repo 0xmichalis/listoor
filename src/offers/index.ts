@@ -18,6 +18,7 @@ export {
     getOfferType,
     getOfferPricePerItem,
     deriveExpirationTime,
+    DEFAULT_PRICE_DECIMALS,
 } from './utils.js';
 export { monitorOffer } from './monitorOffer.js';
 export {

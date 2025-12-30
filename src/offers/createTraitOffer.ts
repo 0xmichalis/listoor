@@ -9,7 +9,7 @@ import { createOfferBase } from './createOfferBase.js';
  * @param collectionSlug The collection slug
  * @param traitType The trait type (e.g., "Background", "Eyes")
  * @param traitValue The trait value (e.g., "Blue", "Red")
- * @param price The price in wei
+ * @param price The price in wei (should already be rounded to the appropriate decimal precision)
  * @param expirationTime The expiration timestamp
  * @param owner The wallet owner address
  * @param quantity The quantity of items to offer for (default: 1)

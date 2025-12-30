@@ -14,22 +14,34 @@ import {
     sumOfferEndAmounts,
     getOfferQuantity,
     deriveExpirationTime,
+    DEFAULT_PRICE_DECIMALS,
 } from './index.js';
 import { isETHOrWETH, getPaymentTokenAddress } from './paymentTokens.js';
 
 const DEFAULT_EXPIRATION_TIME = 5 * 30 * 24 * 60 * 60; // 5 months
-const OPENSEA_PRICE_INCREMENT_4_DECIMALS = parseEther('0.0001'); // Default: 4 decimal places (0.0001 ETH increments)
 
 /**
- * Rounds a price down to the nearest 0.0001 ETH increment (OpenSea default requirement)
- * OpenSea typically allows 4 decimal places for collection/trait offers
- * If a collection requires 3 decimals, createOfferBase will automatically retry with 3 decimal precision
+ * Calculates the price increment based on the number of decimals
+ * @param decimals Number of decimal places (e.g., 3 = 0.001 ETH, 4 = 0.0001 ETH)
+ * @returns Price increment in wei
+ */
+function getPriceIncrement(decimals: number): bigint {
+    // Calculate 10^(18-decimals) to get the increment in wei
+    // e.g., decimals=3 -> 10^15 wei = 0.001 ETH
+    // e.g., decimals=4 -> 10^14 wei = 0.0001 ETH
+    return parseEther('1') / BigInt(10 ** decimals);
+}
+
+/**
+ * Rounds a price down to the specified decimal precision
  * @param price Price in wei
+ * @param decimals Number of decimal places
  * @returns Rounded down price in wei
  */
-function roundToFourDecimals(price: bigint): bigint {
+function roundToDecimals(price: bigint, decimals: number): bigint {
+    const increment = getPriceIncrement(decimals);
     // Round down to increment: (price / increment) * increment
-    return (price / OPENSEA_PRICE_INCREMENT_4_DECIMALS) * OPENSEA_PRICE_INCREMENT_4_DECIMALS;
+    return (price / increment) * increment;
 }
 
 /**
@@ -138,7 +150,8 @@ export const monitorOffer = async (
 
         if (price <= c.maxPrice) {
             // Add one increment to beat the offer
-            const newPrice = price + OPENSEA_PRICE_INCREMENT_4_DECIMALS;
+            const priceIncrement = getPriceIncrement(c.priceDecimals || DEFAULT_PRICE_DECIMALS);
+            const newPrice = price + priceIncrement;
             price = newPrice > c.defaultPrice ? newPrice : c.defaultPrice;
         } else {
             // Check if our offer is already at max price
@@ -195,19 +208,20 @@ export const monitorOffer = async (
 
     // For collection and trait offers, OpenSea validates the per-unit price
     // So we need to round the per-unit price, then multiply by quantity
+    const decimals = c.priceDecimals || DEFAULT_PRICE_DECIMALS;
     let finalPrice: bigint;
     if (offerType === 'collection' || offerType === 'trait') {
         // Round per-unit price to OpenSea increment
-        const perUnitPrice = roundToFourDecimals(price);
+        const perUnitPrice = roundToDecimals(price, decimals);
         // Multiply by quantity to get total price
         finalPrice = perUnitPrice * BigInt(quantity);
     } else {
         // For single token offers, just round the price
-        finalPrice = roundToFourDecimals(price);
+        finalPrice = roundToDecimals(price, decimals);
     }
 
     logger.debug(
-        `Creating ${logPrefix} at ${formatEther(finalPrice)} ${paymentCurrency}${offerType === 'collection' || offerType === 'trait' ? ` (${formatEther(roundToFourDecimals(price))} per unit × ${quantity})` : ''} ...`
+        `Creating ${logPrefix} at ${formatEther(finalPrice)} ${paymentCurrency}${offerType === 'collection' || offerType === 'trait' ? ` (${formatEther(roundToDecimals(price, decimals))} per unit × ${quantity})` : ''} ...`
     );
 
     if (offerType === 'collection') {
