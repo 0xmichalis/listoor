@@ -11,6 +11,7 @@
         "format:check": "prettier --check .",
         "start": "node dist/index.js",
         "start:nodry": "DRY_RUN=false node dist/index.js",
+        "start:debug": "LOG_LEVEL=debug node dist/index.js",
         "postinstall": "husky install"
     },
     "dependencies": {

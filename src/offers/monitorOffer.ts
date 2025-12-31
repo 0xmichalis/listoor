@@ -73,7 +73,7 @@ export const monitorOffer = async (
     // Get the best offer based on offer type
     let bestOffer;
     if (offerType === 'collection') {
-        bestOffer = await getBestCollectionOffer(seaport, c.collectionSlug);
+        bestOffer = await getBestCollectionOffer(seaport, c.collectionSlug, undefined, c.maxPrice);
     } else if (offerType === 'trait' && c.trait) {
         bestOffer = await getBestTraitOffer(
             seaport,
