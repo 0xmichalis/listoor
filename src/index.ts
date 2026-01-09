@@ -22,6 +22,9 @@ const LISTINGS_POLLING_INTERVAL_SECONDS = parseInt(
 const OFFERS_POLLING_INTERVAL_SECONDS = parseInt(
     process.env.OFFERS_POLLING_INTERVAL_SECONDS || '60'
 );
+const STALE_OFFERS_CANCELLATION_INTERVAL_SECONDS = parseInt(
+    process.env.STALE_OFFERS_CANCELLATION_INTERVAL_SECONDS || '60'
+);
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
 // Default to dry-run mode for safety unless explicitly disabled
 // Only disable dry-run if explicitly set to 'false' or '0'
@@ -71,13 +74,6 @@ const monitorOffers = async (
                     owner,
                     dryRun
                 );
-
-                await cancelOldOffers(
-                    offerCollection,
-                    openSeaClients[offerCollection.chain],
-                    owner,
-                    dryRun
-                );
             } catch (err) {
                 logger.error(
                     `Error monitoring offer collection ${offerCollection.collectionSlug}:`,
@@ -87,6 +83,33 @@ const monitorOffers = async (
         }
         logger.debug('[Offers] Waiting for next poll ...');
         await sleep(OFFERS_POLLING_INTERVAL_SECONDS);
+    }
+};
+
+const cancelStaleOffers = async (
+    offerCollections: ReturnType<typeof initializeOfferCollections>,
+    openSeaClients: Record<string, any>,
+    owner: string,
+    dryRun: boolean
+) => {
+    while (true) {
+        for (const offerCollection of offerCollections) {
+            try {
+                await cancelOldOffers(
+                    offerCollection,
+                    openSeaClients[offerCollection.chain],
+                    owner,
+                    dryRun
+                );
+            } catch (err) {
+                logger.error(
+                    `Error canceling old offers for collection ${offerCollection.collectionSlug}:`,
+                    err
+                );
+            }
+        }
+        logger.debug('[Offer Cancellation] Waiting for next poll ...');
+        await sleep(STALE_OFFERS_CANCELLATION_INTERVAL_SECONDS);
     }
 };
 
@@ -107,6 +130,7 @@ const main = async () => {
     await Promise.all([
         monitorListings(collections, openSeaClients, owner.address, DRY_RUN),
         monitorOffers(offerCollections, openSeaClients, chainIds, owner.address, DRY_RUN),
+        cancelStaleOffers(offerCollections, openSeaClients, owner.address, DRY_RUN),
     ]);
 };
 
