@@ -16,7 +16,12 @@ dotenv.config();
 const RPC_ENDPOINTS = process.env.RPC_ENDPOINTS!.split(',');
 const COLLECTION_PATH = process.env.COLLECTION_PATH!;
 const OPENSEA_API_KEY = process.env.OPENSEA_API_KEY!;
-const POLLING_INTERVAL_SECONDS = parseInt(process.env.POLLING_INTERVAL_SECONDS || '60');
+const LISTINGS_POLLING_INTERVAL_SECONDS = parseInt(
+    process.env.LISTINGS_POLLING_INTERVAL_SECONDS || '60'
+);
+const OFFERS_POLLING_INTERVAL_SECONDS = parseInt(
+    process.env.OFFERS_POLLING_INTERVAL_SECONDS || '60'
+);
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
 // Default to dry-run mode for safety unless explicitly disabled
 // Only disable dry-run if explicitly set to 'false' or '0'
@@ -45,7 +50,7 @@ const monitorListings = async (
             }
         }
         logger.debug('[Listings] Waiting for next poll ...');
-        await sleep(POLLING_INTERVAL_SECONDS);
+        await sleep(LISTINGS_POLLING_INTERVAL_SECONDS);
     }
 };
 
@@ -81,7 +86,7 @@ const monitorOffers = async (
             }
         }
         logger.debug('[Offers] Waiting for next poll ...');
-        await sleep(POLLING_INTERVAL_SECONDS);
+        await sleep(OFFERS_POLLING_INTERVAL_SECONDS);
     }
 };
 
