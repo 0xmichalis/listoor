@@ -9,8 +9,7 @@ export { getBestTraitOffer } from './getBestTraitOffer.js';
 export { getAllOffers } from './getAllOffers.js';
 export { getAllCollectionOffers } from './getAllCollectionOffers.js';
 export { getAllTraitOffers } from './getAllTraitOffers.js';
-export { cancelOffer } from './cancelOffer.js';
-export { cancelOldOffers } from './cancelOldOffers.js';
+export { cancelRedundantOffers } from './cancelRedundantOffers.js';
 export { orderV2ToOffer } from './orderV2ToOffer.js';
 export {
     sumOfferEndAmounts,

@@ -8,7 +8,7 @@ import {
     initializeOfferCollections,
     monitorCollection,
 } from './collections/index.js';
-import { monitorOffer, cancelOldOffers } from './offers/index.js';
+import { monitorOffer, cancelRedundantOffers } from './offers/index.js';
 import { initializeClients } from './networks/index.js';
 
 dotenv.config();
@@ -22,8 +22,8 @@ const LISTINGS_POLLING_INTERVAL_SECONDS = parseInt(
 const OFFERS_POLLING_INTERVAL_SECONDS = parseInt(
     process.env.OFFERS_POLLING_INTERVAL_SECONDS || '60'
 );
-const STALE_OFFERS_CANCELLATION_INTERVAL_SECONDS = parseInt(
-    process.env.STALE_OFFERS_CANCELLATION_INTERVAL_SECONDS || '60'
+const REDUNDANT_OFFERS_POLLING_INTERVAL_SECONDS = parseInt(
+    process.env.REDUNDANT_OFFERS_POLLING_INTERVAL_SECONDS || '60'
 );
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
 // Default to dry-run mode for safety unless explicitly disabled
@@ -97,23 +97,13 @@ const cancelStaleOffers = async (
     dryRun: boolean
 ) => {
     while (true) {
-        for (const offerCollection of offerCollections) {
-            try {
-                await cancelOldOffers(
-                    offerCollection,
-                    openSeaClients[offerCollection.chain],
-                    owner,
-                    dryRun
-                );
-            } catch (err) {
-                logger.error(
-                    `Error canceling old offers for collection ${offerCollection.collectionSlug}:`,
-                    err
-                );
-            }
+        try {
+            await cancelRedundantOffers(offerCollections, openSeaClients, owner, dryRun);
+        } catch (err) {
+            logger.error('Error canceling old offers:', err);
         }
         logger.debug('[Offer Cancellation] Waiting for next poll ...');
-        await sleep(STALE_OFFERS_CANCELLATION_INTERVAL_SECONDS);
+        await sleep(REDUNDANT_OFFERS_POLLING_INTERVAL_SECONDS);
     }
 };
 
