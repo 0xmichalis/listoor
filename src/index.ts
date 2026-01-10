@@ -29,6 +29,10 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY!;
 // Default to dry-run mode for safety unless explicitly disabled
 // Only disable dry-run if explicitly set to 'false' or '0'
 const DRY_RUN = process.env.DRY_RUN !== 'false' && process.env.DRY_RUN !== '0';
+// Disable offer cancellation by default, enable only if explicitly set to 'true' or '1'
+const ENABLE_OFFER_CANCELLATION =
+    process.env.ENABLE_OFFER_CANCELLATION === 'true' ||
+    process.env.ENABLE_OFFER_CANCELLATION === '1';
 
 const monitorListings = async (
     collections: ReturnType<typeof initializeCollections>,
@@ -117,6 +121,7 @@ const main = async () => {
     logger.info(
         `Dry-run mode: ${DRY_RUN ? 'ENABLED ⚠️  (No state-changing operations will be executed)' : 'DISABLED (All operations will be executed)'}`
     );
+    logger.info(`Offer cancellation: ${ENABLE_OFFER_CANCELLATION ? 'ENABLED' : 'DISABLED'}`);
 
     const owner = new Wallet(PRIVATE_KEY);
     const { providers, openSeaClients, chainIds } = await initializeClients(
@@ -127,11 +132,16 @@ const main = async () => {
     const collections = initializeCollections(COLLECTION_PATH, providers);
     const offerCollections = initializeOfferCollections(COLLECTION_PATH, providers);
 
-    await Promise.all([
+    const tasks = [
         monitorListings(collections, openSeaClients, owner.address, DRY_RUN),
         monitorOffers(offerCollections, openSeaClients, chainIds, owner.address, DRY_RUN),
-        cancelStaleOffers(offerCollections, openSeaClients, owner.address, DRY_RUN),
-    ]);
+    ];
+
+    if (ENABLE_OFFER_CANCELLATION) {
+        tasks.push(cancelStaleOffers(offerCollections, openSeaClients, owner.address, DRY_RUN));
+    }
+
+    await Promise.all(tasks);
 };
 
 main().catch((error) => {
