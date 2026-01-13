@@ -8,7 +8,7 @@ on:
     workflow_dispatch: # Manual trigger
 
 jobs:
-    format:
+    smoke:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -25,6 +25,9 @@ jobs:
 
             - name: Check formatting
               run: pnpm format:check
+
+            - name: Build
+              run: pnpm build
 
     build:
         # Only build/push Docker image on pushes and manual runs (not PRs)
