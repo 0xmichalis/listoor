@@ -1,5 +1,5 @@
-import { formatEther, getAddress } from 'ethers';
-import { OpenSeaSDK, Offer } from 'opensea-js';
+import { formatEther } from 'ethers';
+import { Chain, OpenSeaSDK, Offer } from 'opensea-js';
 
 import { logger } from '../utils/logger.js';
 import { withRateLimitRetry } from '../utils/ratelimit.js';
@@ -65,7 +65,7 @@ const getOffersToCancelForCollection = async (
 /**
  * Cancels all offers except the best one for multiple offer collections
  * The "best" offer is determined by the highest price (highest price per item)
- * Batches cancellations by chain to minimize API calls
+ * Cancels offers by chain to minimize API calls
  * @param collections Array of offer collection configurations
  * @param openSeaClients Record of OpenSea SDK instances by chain
  * @param owner The wallet owner address
@@ -149,26 +149,28 @@ export const cancelRedundantOffers = async (
             }
 
             try {
-                // Get the account address from the first offer (all should have the same offerer)
-                const accountAddress = getAddress(
-                    allOffersToCancel[0].offer.protocol_data.parameters.offerer
-                );
+                // opensea-js does not currently expose a batch `offchainCancelOrders`, so cancel in a loop
+                for (const { offer, collectionSlug, orderHash } of offersWithHashes) {
+                    try {
+                        await withRateLimitRetry(() =>
+                            seaport.offchainCancelOrder(
+                                offer.protocol_address,
+                                orderHash,
+                                offer.chain as Chain
+                            )
+                        );
 
-                // Cancel all offers in a single batch for this chain
-                await withRateLimitRetry(() =>
-                    seaport.cancelOrders({
-                        orderHashes,
-                        accountAddress,
-                    })
-                );
-
-                // Log individual offer details for successful cancellations
-                for (const { offer, collectionSlug } of offersWithHashes) {
-                    const pricePerItem = getOfferPricePerItem(offer);
-                    const quantity = getOfferQuantity(offer);
-                    logger.info(
-                        `Successfully canceled offer: ${collectionSlug}, price: ${formatEther(pricePerItem)} ${offer.price.currency}, quantity: ${quantity}`
-                    );
+                        const pricePerItem = getOfferPricePerItem(offer);
+                        const quantity = getOfferQuantity(offer);
+                        logger.info(
+                            `Successfully canceled offer: ${collectionSlug}, price: ${formatEther(pricePerItem)} ${offer.price.currency}, quantity: ${quantity}`
+                        );
+                    } catch (err) {
+                        const errorMessage = err instanceof Error ? err.message : String(err);
+                        logger.error(
+                            `Failed to offchain cancel offer ${orderHash} for collection ${collectionSlug} on chain ${chain}: ${errorMessage}`
+                        );
+                    }
                 }
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
